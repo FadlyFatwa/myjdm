@@ -1,0 +1,7 @@
+{
+    "html.autoClosingTags": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveWhenNoErrors": true,
+    "editor.autoClosingComments": "always",
+    "editor.autoClosingQuotes": "always"
+}
