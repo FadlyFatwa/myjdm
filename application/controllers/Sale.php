@@ -714,6 +714,11 @@ class Sale extends CI_Controller {
 		$this->db->insert('p_item', $data);
 		$item_id = $this->db->insert_id();
 
+		if (!$item_id) {
+			echo json_encode(['success' => false]);
+			return;
+		}
+
 		echo json_encode([
 			'success' => true,
 			'item' => [

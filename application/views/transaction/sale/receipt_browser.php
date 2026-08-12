@@ -93,7 +93,7 @@ body {
 <div class="line"></div>
 
 <?php
-$tgl = date('d/m/Y', strtotime($sale->create));
+$tgl = date('d/m/Y', strtotime($sale->date));
 $jam = date('H:i:s', strtotime($sale->create));
 ?>
 

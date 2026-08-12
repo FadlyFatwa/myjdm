@@ -269,6 +269,11 @@ class Purchase_order extends CI_Controller {
 
         $po = $this->po_m->get_po($po_id);
 
+        // Transaksi: p_item, po_detail.item_id, t_stock, dan supplier_barang harus
+        // konsisten sebagai satu unit -> kalau insert p_item gagal, jangan sampai
+        // po_detail ke-link ke item_id=0 atau t_stock ke-insert dengan item_id ngawur.
+        $this->db->trans_start();
+
         $this->db->insert('p_item', [
             'nama_item'   => $nama_item,
             'barcode'     => $barcode,
@@ -282,6 +287,12 @@ class Purchase_order extends CI_Controller {
             'status'      => 'active',
         ]);
         $item_id = $this->db->insert_id();
+
+        if (!$item_id) {
+            $this->db->trans_complete();
+            echo json_encode(['status' => 'error', 'message' => 'Barang baru gagal disimpan.']);
+            exit();
+        }
 
         $this->db->where('id', $detail_id)->update('po_detail', ['item_id' => $item_id]);
 
@@ -309,6 +320,13 @@ class Purchase_order extends CI_Controller {
                 'supplier_id' => $po->supplier_id,
                 'harga_beli'  => $modal,
             ]);
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            echo json_encode(['status' => 'error', 'message' => 'Barang baru gagal disimpan, silakan coba lagi.']);
+            exit();
         }
 
         echo json_encode(['status' => 'success', 'item_id' => $item_id]);
@@ -361,6 +379,14 @@ class Purchase_order extends CI_Controller {
             'ongkir_payment_method' => $ongkir > 0 ? 'cash' : null,
         ]);
         $receipt_id = $this->db->insert_id();
+
+        if (!$receipt_id) {
+            // Jangan lanjut catat ongkir/stok kalau po_receipt sendiri gagal
+            // disimpan -- nanti stok & jurnal ongkir jalan tanpa riwayat penerimaannya.
+            $this->session->set_flashdata('error', 'Penerimaan barang gagal disimpan, silakan coba lagi.');
+            redirect('purchase-order/' . $po_id);
+            return;
+        }
 
         // Ongkir selalu dibayar tunai dari Kas — catat lewat Beban_m supaya muncul juga
         // di listing "Beban Operasional" (bukan cuma jurnal), bukan cuma dikait ke PO.

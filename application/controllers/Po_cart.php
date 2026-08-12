@@ -114,6 +114,10 @@ class Po_cart extends CI_Controller {
 
         $po_number = $this->po_m->po_number();
 
+        // Transaksi: kalau po_header gagal dibuat, jangan sampai po_detail
+        // ke-insert dengan po_id ngawur dan cart terhapus padahal PO-nya tidak ada.
+        $this->db->trans_start();
+
         $this->db->insert('po_header', [
             'po_number'     => $po_number,
             'supplier_id'   => $supplier_id,
@@ -124,6 +128,12 @@ class Po_cart extends CI_Controller {
             'created_by'    => $user_id,
         ]);
         $po_id = $this->db->insert_id();
+
+        if (!$po_id) {
+            $this->db->trans_complete();
+            echo json_encode(['status' => 'error', 'message' => 'PO gagal dibuat.']);
+            exit();
+        }
 
         foreach ($selected_ids as $cart_id) {
             $item = $this->po_cart_m->get((int) $cart_id);
@@ -144,6 +154,13 @@ class Po_cart extends CI_Controller {
             if ($item->item_id) {
                 $this->po_cart_m->remove_siblings($item->item_id, $supplier_id);
             }
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            echo json_encode(['status' => 'error', 'message' => 'PO gagal disimpan, silakan coba lagi.']);
+            exit();
         }
 
         echo json_encode(['status' => 'success', 'po_id' => $po_id]);

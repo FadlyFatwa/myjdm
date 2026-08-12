@@ -62,11 +62,20 @@ class Retur extends CI_Controller {
         $data = $this->input->post(null, TRUE);
         $return_id = $this->return_m->add_return($data);
 
+        // Insert t_return gagal (mis. constraint/tipe data) -> jangan lanjut,
+        // supaya tidak membuat t_return_detail yatim (return_id/sale_id ngawur)
+        // yang bikin trigger stok jalan tapi data retur & penjualan tidak ke-update.
+        if (!$return_id) {
+            $this->session->set_flashdata('error', 'Data Retur gagal disimpan');
+            redirect('retur');
+        }
+
         $return_details = [];
         foreach ($data['items'] as $item) {
             if ($item['qty'] > 0) {
                 array_push($return_details, [
                     'return_id' => $return_id,
+                    'sale_id' => $data['sale_id'],
                     'item_id' => $item['item_id'],
                     'qty' => $item['qty'],
                     'price_retur' => $item['price'],

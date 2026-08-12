@@ -59,7 +59,8 @@
                                             <label for="customer"><i class="fa fa-user-circle"></i> Pembeli</label>
                                         </td>
                                         <td>
-                                            <input type="text" name="customer_id" value="<?= $nama_customer ?>" class="form-control" readonly>
+                                            <input type="text" value="<?= $nama_customer ?>" class="form-control" readonly>
+                                            <input type="hidden" name="customer_id" value="<?= (int) $customer_id ?>">
                                         </td>
                                     </tr>
                                 </table>

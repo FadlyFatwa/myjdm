@@ -312,6 +312,11 @@ public function edit($id)
         // 1️⃣ Generate barcode
         $barcode = str_pad((int)$this->item_m->get_max_barcode() + 1, 5, '0', STR_PAD_LEFT);
 
+        // Satu transaksi untuk 4 langkah di bawah -> kalau salah satu gagal,
+        // semuanya di-rollback (tidak ada p_item/t_stock yatim atau status
+        // pending yang ke-approve padahal barangnya gagal dibuat).
+        $this->db->trans_start();
+
         // 2️⃣ Insert ke p_item
         $item_data = [
             'barcode'     => $barcode,
@@ -350,11 +355,21 @@ public function edit($id)
         // 5️⃣ Update status pending
         $this->item_pending_m->approve($id);
 
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Approve gagal disimpan, silakan coba lagi.'
+            ]);
+            return;
+        }
+
         echo json_encode([
             'status' => 'success',
             'message' => 'Barang berhasil di-approve'
         ]);
-    }   
+    }
 
 
     // REJECT

@@ -491,7 +491,7 @@ $seg2 = $this->uri->segment(2) ?? '';
                 </li>
                 <?php endif ?>
                 <?php if(in_array($this->fungsi->user_login()->level, [1, 2])) : ?>
-              <li class="treeview <?= in_array($this->uri->segment(1), ['category', 'stock', 'unit', 'item', 'item_pending']) ? 'active menu-open' : '' ?>">
+              <li class="treeview <?= in_array($this->uri->segment(1), ['category', 'stock', 'unit', 'item', 'item_pending', 'service-item']) ? 'active menu-open' : '' ?>">
                   <a href="#">
                       <i class="fa fa-archive"></i> <span>Manajemen Produk</span>
                       <span class="pull-right-container"><i class="fa fa-angle-left pull-right"></i></span>
@@ -515,6 +515,12 @@ $seg2 = $this->uri->segment(2) ?? '';
                       </li>
                       <li <?= ($this->uri->segment(1) == 'stock' && $this->uri->segment(2) == 'out') ? 'class="active"' : '' ?>>
                           <a href="<?= site_url('stock/out') ?>"><i class="fa fa-upload text-red"></i> Barang Keluar</a>
+                      </li>
+
+                      <li class="divider" style="border-top: 1px solid #4b646f; margin: 5px 10px;"></li>
+
+                      <li <?= $this->uri->segment(1) == 'service-item' ? 'class="active"' : '' ?>>
+                          <a href="<?= site_url('service-item') ?>"><i class="fa fa-wrench text-blue"></i> Barang Jasa</a>
                       </li>
 
                       <li class="divider" style="border-top: 1px solid #4b646f; margin: 5px 10px;"></li>

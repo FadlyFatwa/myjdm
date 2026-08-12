@@ -21,12 +21,9 @@ class Return_m extends CI_Model {
 
     public function add_return_detail($params)
     {
-        // Pastikan $params sudah mencakup sale_id
-        foreach ($params as &$detail) {
-            $detail['sale_id'] = $this->db->get_where('t_return', ['return_id' => $detail['return_id']])->row()->sale_id;
-        }
-
-        // Insert batch ke tabel t_return_detail
+        // sale_id sudah disertakan langsung oleh controller (dari data form),
+        // bukan di-query ulang lewat return_id -> menghindari sale_id NULL
+        // jika insert t_return sebelumnya gagal/tertunda.
         $this->db->insert_batch('t_return_detail', $params);
     }
 

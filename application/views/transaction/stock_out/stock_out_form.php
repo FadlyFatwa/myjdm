@@ -109,52 +109,29 @@
                 </h4>
             </div>
             <div class="modal-body" style="padding:16px;">
-                <table class="table table-bordered table-hover table-striped"
-                       id="tbl-modal-item" style="width:100%">
-                    <thead>
-                        <tr>
-                            <th>Barcode</th>
-                            <th>Nama Barang</th>
-                            <th>Supplier</th>
-                            <th>Satuan</th>
-                            <th class="text-right">Harga</th>
-                            <th class="text-center">Stok</th>
-                            <th class="text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($item as $d): ?>
-                        <tr>
-                            <td><?= $d->barcode ?></td>
-                            <td><?= htmlspecialchars($d->nama_item) ?></td>
-                            <td><?= $d->nama_supplier ?? '-' ?></td>
-                            <td><?= $d->nama_unit ?? '-' ?></td>
-                            <td class="text-right"><?= indo_currency($d->price) ?></td>
-                            <td class="text-center">
-                                <?php if ($d->stock == 0): ?>
-                                    <span class="label label-danger">Habis</span>
-                                <?php elseif ($d->stock <= 3): ?>
-                                    <span class="label label-warning"><?= $d->stock ?></span>
-                                <?php else: ?>
-                                    <span class="label label-success"><?= $d->stock ?></span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="text-center">
-                                <button class="btn btn-primary btn-xs btn-pilih"
-                                    data-id="<?= $d->item_id ?>"
-                                    data-barcode="<?= $d->barcode ?>"
-                                    data-nama="<?= htmlspecialchars($d->nama_item, ENT_QUOTES) ?>"
-                                    data-supplier="<?= htmlspecialchars($d->nama_supplier ?? '-', ENT_QUOTES) ?>"
-                                    data-unit="<?= htmlspecialchars($d->nama_unit ?? '-', ENT_QUOTES) ?>"
-                                    data-stock="<?= $d->stock ?>"
-                                    <?= $d->stock <= 0 ? 'disabled' : '' ?>>
-                                    <i class="fa fa-check"></i> Pilih
-                                </button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <div class="form-group" style="position:relative;">
+                    <input type="text" id="modal_item_search" class="form-control" autocomplete="off"
+                           placeholder="Ketik barcode / nama barang... (min 2 huruf)" autofocus>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-striped"
+                           id="tbl-modal-item" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Barcode</th>
+                                <th>Nama Barang</th>
+                                <th>Supplier</th>
+                                <th>Satuan</th>
+                                <th class="text-right">Harga</th>
+                                <th class="text-center">Stok</th>
+                                <th class="text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal_item_result">
+                            <tr><td colspan="7" class="text-center text-muted">Ketik minimal 2 huruf untuk mencari barang...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -163,29 +140,72 @@
 <script>
 $(document).ready(function() {
 
-    // Pre-inisialisasi DataTables saat halaman load (bukan saat modal dibuka)
-    // agar modal langsung siap tanpa delay
-    var modalTable = $('#tbl-modal-item').DataTable({
-        language: {
-            search      : 'Cari:',
-            lengthMenu  : 'Tampilkan _MENU_ data',
-            info        : 'Data _START_–_END_ dari _TOTAL_',
-            zeroRecords : 'Barang tidak ditemukan',
-            paginate    : { previous: '‹', next: '›' }
-        },
-        columnDefs : [{ orderable: false, targets: [5, 6] }],
-        order      : [[0, 'asc']],
-        pageLength : 10,
-        autoWidth  : false
+    // ── Pencarian barang via AJAX (agar modal tidak perlu memuat semua barang sekaligus) ──
+    function renderModalItemRows(items) {
+        var $tbody = $('#modal_item_result').empty();
+
+        if (!items.length) {
+            $tbody.append('<tr><td colspan="7" class="text-center text-muted">Barang tidak ditemukan</td></tr>');
+            return;
+        }
+
+        items.forEach(function (d) {
+            var stockLabel;
+            if (d.stock == 0) {
+                stockLabel = $('<span class="label label-danger">Habis</span>');
+            } else if (d.stock <= 3) {
+                stockLabel = $('<span class="label label-warning"></span>').text(d.stock);
+            } else {
+                stockLabel = $('<span class="label label-success"></span>').text(d.stock);
+            }
+
+            var $btn = $('<button type="button" class="btn btn-primary btn-xs btn-pilih"><i class="fa fa-check"></i> Pilih</button>')
+                .attr('data-id', d.item_id)
+                .attr('data-barcode', d.barcode)
+                .attr('data-nama', d.nama_item)
+                .attr('data-supplier', d.nama_supplier || '-')
+                .attr('data-unit', d.nama_unit || '-')
+                .attr('data-stock', d.stock);
+            if (d.stock <= 0) $btn.attr('disabled', 'disabled');
+
+            var $row = $('<tr></tr>').append(
+                $('<td></td>').text(d.barcode),
+                $('<td></td>').text(d.nama_item),
+                $('<td></td>').text(d.nama_supplier || '-'),
+                $('<td></td>').text(d.nama_unit || '-'),
+                $('<td class="text-right"></td>').text(formatNumber(d.price)),
+                $('<td class="text-center"></td>').append(stockLabel),
+                $('<td class="text-center"></td>').append($btn)
+            );
+            $tbody.append($row);
+        });
+    }
+
+    function formatNumber(input) {
+        return input.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    var modalItemSearchTimer;
+    $(document).on('keyup', '#modal_item_search', function () {
+        clearTimeout(modalItemSearchTimer);
+        var keyword = $(this).val().trim();
+
+        if (keyword.length < 2) {
+            $('#modal_item_result').html('<tr><td colspan="7" class="text-center text-muted">Ketik minimal 2 huruf untuk mencari barang...</td></tr>');
+            return;
+        }
+
+        modalItemSearchTimer = setTimeout(function () {
+            $.post('<?= site_url('stock/search_item') ?>', { keyword: keyword }, function (items) {
+                renderModalItemRows(items);
+            }, 'json');
+        }, 300);
     });
 
-    // Sesuaikan lebar kolom ketika modal benar-benar terlihat
+    // Reset & fokus ke pencarian setiap kali modal dibuka
     $('#modal-item').on('shown.bs.modal', function() {
-        modalTable.columns.adjust().draw(false);
-        // Fokus ke search box agar langsung bisa ketik
-        setTimeout(function() {
-            $('#modal-item .dataTables_filter input').focus();
-        }, 100);
+        $('#modal_item_search').val('').focus();
+        $('#modal_item_result').html('<tr><td colspan="7" class="text-center text-muted">Ketik minimal 2 huruf untuk mencari barang...</td></tr>');
     });
 
     // Pilih barang dari modal

@@ -111,10 +111,45 @@ class Stock extends CI_Controller {
     }
     
     public function stock_in_add(){
-        $item = $this->item_m->get_status()->result();
-        $supplier = $this->supplier_m->get()->result();
-        $data = ['item' => $item, 'supplier' => $supplier];
-        $this->template->load('template', 'transaction/stock_in/stock_in_form', $data);
+        $this->template->load('template', 'transaction/stock_in/stock_in_form', []);
+    }
+
+    // Pencarian barang via AJAX (dipakai modal Pilih Barang di stock in & stock out)
+    // Query ringan tanpa join t_sale_detail agar tidak lambat seperti get_status()
+    public function search_item()
+    {
+        $keyword = trim($this->input->post('keyword'));
+
+        $this->db->select('
+            p_item.item_id, p_item.barcode, p_item.nama_item, p_item.pk,
+            p_item.modal, p_item.price, p_item.stock,
+            p_item.supplier_id, p_item.unit_id,
+            supplier.nama_supplier, p_unit.nama_unit
+        ');
+        $this->db->from('p_item');
+        $this->db->join('supplier', 'p_item.supplier_id = supplier.supplier_id', 'left');
+        $this->db->join('p_unit', 'p_item.unit_id = p_unit.unit_id', 'left');
+        $this->db->where('p_item.status', 'active');
+
+        if ($keyword !== '') {
+            $keywords = preg_split('/\s+/', $keyword);
+            $this->db->group_start();
+            foreach ($keywords as $kw) {
+                $this->db->group_start();
+                $this->db->like('p_item.barcode', $kw);
+                $this->db->or_like('p_item.nama_item', $kw);
+                $this->db->or_like('p_item.pk', $kw);
+                $this->db->or_like('supplier.nama_supplier', $kw);
+                $this->db->group_end();
+            }
+            $this->db->group_end();
+        }
+
+        $this->db->order_by('p_item.nama_item', 'asc');
+        $this->db->limit(20);
+        $result = $this->db->get()->result();
+
+        echo json_encode($result);
     }
     
     public function stock_in_add_after($item_id = null) {
@@ -444,9 +479,7 @@ class Stock extends CI_Controller {
 
     public function stock_out_add()
     {
-        $item = $this->item_m->get_status()->result();
-        $data = ['item' => $item];
-        $this->template->load('template', 'transaction/stock_out/stock_out_form', $data);
+        $this->template->load('template', 'transaction/stock_out/stock_out_form', []);
     }
     public function stock_out_del()
     {

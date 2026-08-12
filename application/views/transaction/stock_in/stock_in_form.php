@@ -48,48 +48,30 @@
             </div>
 
             <!-- Modal Body -->
-            <div class="modal-body table-responsive">
-                <table id="table1" class="table table-striped table-bordered dt-responsive" style="width:100%">
-                    <thead>
-                        <tr>
-                            <th>Barcode</th>
-                            <th>Nama Barang</th>
-                            <th>Supplier</th>
-                            <th>Unit</th>
-                            <th>Modal</th>
-                            <th>PK</th>
-                            <th>Stok</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($item as $data): ?>
-                        <tr>
-                            <td><?= $data->barcode ?></td>
-                            <td><?= $data->nama_item ?></td>
-                            <td><?= $data->nama_supplier ?></td>
-                            <td><?= $data->nama_unit ?></td>
-                            <td class="text-right"><?=indo_currency($data->modal) ?></td>
-                            <td class="text-right"><?= $data->pk ?></td>
-                            <td class="text-right"><?= $data->stock ?></td>
-                            <td class="text-right">
-                                <button class="btn btn-xs btn-info" id="select"
-                                    data-id="<?= $data->item_id ?>"
-                                    data-barcode="<?= $data->barcode ?>"
-                                    data-modal="<?= $data->modal ?>"
-                                    data-pk="<?= $data->pk ?>"
-                                    data-nama_item="<?= $data->nama_item ?>"
-                                    data-supplier_id="<?= $data->supplier_id ?>"
-                                    data-nama_supplier="<?= $data->nama_supplier ?>"
-                                    data-nama_unit="<?= $data->nama_unit ?>"
-                                    data-stock="<?= $data->stock ?>">
-                                    <i class="fa fa-check"></i> Pilih
-                                </button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+            <div class="modal-body">
+                <div class="form-group" style="position:relative;">
+                    <input type="text" id="modal_item_search" class="form-control" autocomplete="off"
+                           placeholder="Ketik barcode / nama barang / PK / supplier... (min 2 huruf)">
+                </div>
+                <div class="table-responsive">
+                    <table id="tbl-modal-item-in" class="table table-striped table-bordered" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Barcode</th>
+                                <th>Nama Barang</th>
+                                <th>Supplier</th>
+                                <th>Unit</th>
+                                <th>Modal</th>
+                                <th>PK</th>
+                                <th>Stok</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal_item_result">
+                            <tr><td colspan="8" class="text-center text-muted">Ketik minimal 2 huruf untuk mencari barang...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -196,8 +178,66 @@ $(document).ready(function () {
         activeRow = $(this).closest('.stock-row'); // Simpan referensi baris aktif
     });
 
+    // ── Pencarian barang via AJAX (agar modal tidak perlu memuat semua barang sekaligus) ──
+    function renderModalItemRows(items) {
+        var $tbody = $('#modal_item_result').empty();
+
+        if (!items.length) {
+            $tbody.append('<tr><td colspan="8" class="text-center text-muted">Barang tidak ditemukan</td></tr>');
+            return;
+        }
+
+        items.forEach(function (d) {
+            var $btn = $('<button type="button" class="btn btn-xs btn-info btn-select-item"><i class="fa fa-check"></i> Pilih</button>')
+                .attr('data-id', d.item_id)
+                .attr('data-barcode', d.barcode)
+                .attr('data-modal', d.modal)
+                .attr('data-pk', d.pk)
+                .attr('data-nama_item', d.nama_item)
+                .attr('data-supplier_id', d.supplier_id)
+                .attr('data-nama_supplier', d.nama_supplier)
+                .attr('data-nama_unit', d.nama_unit)
+                .attr('data-stock', d.stock);
+
+            var $row = $('<tr></tr>').append(
+                $('<td></td>').text(d.barcode),
+                $('<td></td>').text(d.nama_item),
+                $('<td></td>').text(d.nama_supplier || '-'),
+                $('<td></td>').text(d.nama_unit || '-'),
+                $('<td class="text-right"></td>').text(formatNumber(d.modal)),
+                $('<td class="text-right"></td>').text(d.pk || '-'),
+                $('<td class="text-right"></td>').text(d.stock),
+                $('<td class="text-right"></td>').append($btn)
+            );
+            $tbody.append($row);
+        });
+    }
+
+    var modalItemSearchTimer;
+    $(document).on('keyup', '#modal_item_search', function () {
+        clearTimeout(modalItemSearchTimer);
+        var keyword = $(this).val().trim();
+
+        if (keyword.length < 2) {
+            $('#modal_item_result').html('<tr><td colspan="8" class="text-center text-muted">Ketik minimal 2 huruf untuk mencari barang...</td></tr>');
+            return;
+        }
+
+        modalItemSearchTimer = setTimeout(function () {
+            $.post('<?= site_url('stock/search_item') ?>', { keyword: keyword }, function (items) {
+                renderModalItemRows(items);
+            }, 'json');
+        }, 300);
+    });
+
+    // Reset & fokus ke pencarian setiap kali modal dibuka
+    $('#modal-item').on('shown.bs.modal', function () {
+        $('#modal_item_search').val('').focus();
+        $('#modal_item_result').html('<tr><td colspan="8" class="text-center text-muted">Ketik minimal 2 huruf untuk mencari barang...</td></tr>');
+    });
+
     // Populate item details when selecting an item from modal
-    $(document).on('click', '#select', function () {
+    $(document).on('click', '.btn-select-item', function () {
         if (!activeRow) {
             Swal.fire({
                 icon: 'error',
