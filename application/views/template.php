@@ -503,6 +503,9 @@ $seg2 = $this->uri->segment(2) ?? '';
                       <li <?= ($this->uri->segment(1) == 'item' && $this->uri->segment(2) == 'duplicate') ? 'class="active"' : '' ?>>
                           <a href="<?= site_url('item/duplicate') ?>"><i class="fa fa-clone text-orange"></i> Deteksi Item Mirip</a>
                       </li>
+                      <li <?= ($this->uri->segment(1) == 'item' && $this->uri->segment(2) == 'multi_supplier') ? 'class="active"' : '' ?>>
+                          <a href="<?= site_url('item/multi_supplier') ?>"><i class="fa fa-truck text-blue"></i> Barang Multi Supplier</a>
+                      </li>
 
                       <li <?= ($this->uri->segment(1) == 'stock' && $this->uri->segment(2) == 'in') ? 'class="active"' : '' ?>>
                           <a href="<?= site_url('stock/in') ?>"><i class="fa fa-download text-green"></i> Stok Masuk</a>

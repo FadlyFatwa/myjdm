@@ -4,6 +4,7 @@ class Item_pending extends CI_Controller {
 
     public function __construct() {
         parent::__construct();
+        check_not_login();
         $this->load->model([
             'item_pending_m',
             'supplier_m',
@@ -303,6 +304,8 @@ public function edit($id)
 
     public function approve($id)
     {
+        check_allowed_levels([1, 2]);
+
         $pending = $this->item_pending_m->get($id)->row();
         if (!$pending) show_404();
 
@@ -356,6 +359,7 @@ public function edit($id)
 
     // REJECT
     public function reject($id) {
+        check_allowed_levels([1, 2]);
         $this->item_pending_m->reject($id);
         redirect('item_pending');
     }

@@ -91,14 +91,15 @@ class Report extends CI_Controller {
 
     public function sale_detail_ajax($sale_id)
     {
+        $sale_id = (int) $sale_id;
         $this->load->model('sale_m');
         // Ambil header penjualan
         $query = $this->sale_m->get_sale_pagination(); // Gunakan method yang sudah ada untuk ambil data sale
-        $data['sale'] = $this->db->query("SELECT t_sale.*, customer.nama_customer, user.nama as nama_user 
-                                        FROM t_sale 
+        $data['sale'] = $this->db->query("SELECT t_sale.*, customer.nama_customer, user.nama as nama_user
+                                        FROM t_sale
                                         LEFT JOIN customer ON t_sale.customer_id = customer.customer_id
                                         JOIN user ON t_sale.user_id = user.user_id
-                                        WHERE t_sale.sale_id = '$sale_id'")->row();
+                                        WHERE t_sale.sale_id = ?", [$sale_id])->row();
         
         // Ambil detail produk
         $data['products'] = $this->sale_m->get_sale_detail($sale_id)->result();

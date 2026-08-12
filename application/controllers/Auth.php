@@ -32,6 +32,7 @@ class Auth extends CI_Controller {
         $row = $this->user_m->login($post);
 
         if ($row) {
+            $this->session->sess_regenerate(TRUE);
             $this->session->unset_userdata(['login_attempts', 'last_attempt']);
             $this->session->set_userdata([
                 'userid' => $row->user_id,

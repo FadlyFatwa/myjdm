@@ -330,7 +330,7 @@ $config['cache_query_string'] = FALSE;
 | https://codeigniter.com/user_guide/libraries/encryption.html
 |
 */
-$config['encryption_key'] = '';
+$config['encryption_key'] = '51933b3785c48c98cb0f57eae8210a87ccf8666c23feff964e2d6d3b77a4d234';
 
 /*
 |--------------------------------------------------------------------------
@@ -409,8 +409,9 @@ $config['sess_regenerate_destroy'] = FALSE;
 $config['cookie_prefix']	= '';
 $config['cookie_domain']	= '';
 $config['cookie_path']		= '/';
+// TODO: set TRUE setelah HTTPS/SSL aktif di server (lihat catatan di bawah)
 $config['cookie_secure']	= FALSE;
-$config['cookie_httponly'] 	= FALSE;
+$config['cookie_httponly'] 	= TRUE;
 
 /*
 |--------------------------------------------------------------------------

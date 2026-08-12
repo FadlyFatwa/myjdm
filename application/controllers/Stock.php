@@ -133,13 +133,17 @@ class Stock extends CI_Controller {
 
     public function stock_in_add_multiple()
     {
-        // Ambil item_ids dari session flashdata
-        $item_ids = $this->session->flashdata('item_ids');
+        // item_ids diambil dari query string (utama) dengan fallback ke session
+        // flashdata (kompatibilitas lama) kalau query string tidak ada.
+        $item_ids = $this->input->get('ids');
+        if (!$item_ids) {
+            $item_ids = $this->session->flashdata('item_ids');
+        }
 
         // Pisahkan item_ids menjadi array
         $item_ids_array = [];
         if ($item_ids) {
-            $item_ids_array = explode(',', $item_ids);
+            $item_ids_array = array_filter(explode(',', $item_ids));
         }
 
         // Ambil data supplier dan unit untuk dropdown

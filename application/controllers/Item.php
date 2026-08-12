@@ -45,9 +45,139 @@ class item extends CI_Controller {
 	}
 
 	public function temporary()
-	{	
+	{
 		$data['row'] = $this->item_m->get();
 		$this->template->load('template', 'product/item/item_temporary',$data);
+	}
+
+	// ===================== BARANG MULTI SUPPLIER =====================
+
+	public function multi_supplier()
+	{
+		check_allowed_levels([1, 2]);
+		$this->template->load('template', 'product/item/item_multi_supplier');
+	}
+
+	function get_json_multi_supplier() {
+		$draw = intval($this->input->post('draw'));
+
+		$this->db->select("p_item.item_id, p_item.supplier_id, p_item.barcode, p_item.nama_item,
+			sup.nama_supplier, p_category.nama_category, p_unit.nama_unit,
+			p_item.modal, p_item.pk, p_item.price, p_item.stock,
+			(SELECT COUNT(DISTINCT supplier_id) FROM supplier_barang WHERE item_id = p_item.item_id) AS supplier_count", false);
+		$this->db->from('p_item');
+		$this->db->join('supplier sup', 'p_item.supplier_id = sup.supplier_id', 'left');
+		$this->db->join('p_category', 'p_item.category_id = p_category.category_id', 'left');
+		$this->db->join('p_unit', 'p_item.unit_id = p_unit.unit_id', 'left');
+		$this->db->where('p_item.status', 'active');
+		$this->db->where("(SELECT COUNT(DISTINCT supplier_id) FROM supplier_barang WHERE item_id = p_item.item_id) > 1", null, false);
+
+		$search_value = $_POST['search']['value'] ?? null;
+		$order_column_index = $_POST['order'][0]['column'] ?? null;
+
+		// Search
+		if (!empty($search_value)) {
+			$keywords = explode(" ", $search_value);
+
+			$this->db->group_start();
+			foreach ($keywords as $keyword) {
+				$this->db->group_start();
+				$this->db->like('barcode', $keyword);
+				$this->db->or_like('nama_item', $keyword);
+				$this->db->or_like('nama_supplier', $keyword);
+				$this->db->or_like('nama_category', $keyword);
+				$this->db->or_like('nama_unit', $keyword);
+				$this->db->or_like('pk', $keyword);
+				$this->db->group_end();
+			}
+			$this->db->group_end();
+		}
+
+		// Order
+		if (isset($order_column_index)) {
+			$column_name = $_POST['columns'][$order_column_index]['data'];
+			$column_sort_order = $_POST['order'][0]['dir'];
+
+			$allowed_columns = [
+				'barcode'        => 'p_item.barcode',
+				'nama_item'      => 'p_item.nama_item',
+				'nama_supplier'  => 'sup.nama_supplier',
+				'nama_category'  => 'p_category.nama_category',
+				'nama_unit'      => 'p_unit.nama_unit',
+				'modal'          => 'p_item.modal',
+				'pk'             => 'p_item.pk',
+				'price'          => 'p_item.price',
+				'stock'          => 'p_item.stock',
+				'supplier_count' => 'supplier_count',
+			];
+			if (isset($allowed_columns[$column_name])) {
+				$this->db->order_by($allowed_columns[$column_name], $column_sort_order);
+			}
+		} else {
+			$this->db->order_by('supplier_count', 'DESC');
+		}
+
+		$totalFiltered = $this->db->count_all_results('', false);
+		$this->db->limit($this->input->post('length'), $this->input->post('start'));
+		$data = $this->db->get()->result_array();
+
+		$totalRecords = $this->db->query(
+			"SELECT COUNT(*) AS cnt FROM p_item
+			 WHERE status = 'active'
+			   AND (SELECT COUNT(DISTINCT supplier_id) FROM supplier_barang WHERE item_id = p_item.item_id) > 1"
+		)->row()->cnt;
+
+		// Batch fetch semua supplier per item di halaman ini (1 query untuk semua item)
+		$sup_map = [];
+		if (!empty($data)) {
+			$item_ids = array_column($data, 'item_id');
+			$this->db->select('sb.item_id, sb.supplier_id, sb.harga_beli, sb.kode_beli, s.nama_supplier');
+			$this->db->from('supplier_barang sb');
+			$this->db->join('supplier s', 'sb.supplier_id = s.supplier_id');
+			$this->db->where_in('sb.item_id', $item_ids);
+			$this->db->order_by('sb.harga_beli', 'DESC');
+			foreach ($this->db->get()->result_array() as $sr) {
+				$sup_map[$sr['item_id']][] = $sr;
+			}
+		}
+
+		$output = array(
+			"draw" => $draw,
+			"recordsTotal" => $totalRecords,
+			"recordsFiltered" => $totalFiltered,
+			"data" => array_map(function($row) use ($sup_map) {
+				$active_sup_id = (int) $row['supplier_id'];
+				$sups = $sup_map[$row['item_id']] ?? [];
+
+				$supplier_list = implode('', array_map(function($s) use ($active_sup_id) {
+					$is_act = ((int) $s['supplier_id'] === $active_sup_id);
+					$name   = htmlspecialchars($s['nama_supplier']);
+					if ($is_act) {
+						$name = '<b>' . $name . '</b> <span class="label label-primary" style="font-size:10px">aktif</span>';
+					}
+					return '<div>' . $name . ' &mdash; ' . indo_currency($s['harga_beli'])
+						. (!empty($s['kode_beli']) ? ' <small class="text-muted">(' . htmlspecialchars($s['kode_beli']) . ')</small>' : '')
+						. '</div>';
+				}, $sups));
+
+				$action = '<a href="' . site_url('item/edit/' . $row['item_id']) . '" class="btn btn-primary btn-xs"><i class="fa fa-pencil"></i> Edit</a>';
+
+				return array(
+					'barcode'        => $row['barcode'],
+					'nama_item'      => htmlspecialchars($row['nama_item']),
+					'nama_category'  => $row['nama_category'],
+					'nama_unit'      => $row['nama_unit'],
+					'supplier_count' => '<span class="label label-info">' . (int) $row['supplier_count'] . ' supplier</span>',
+					'supplier_list'  => $supplier_list,
+					'price'          => indo_currency($row['price']),
+					'stock'          => $row['stock'],
+					'action'         => $action,
+				);
+			}, $data)
+		);
+
+		echo json_encode($output);
+		exit();
 	}
 
 	function get_json() {
@@ -1465,8 +1595,9 @@ class item extends CI_Controller {
 				if ($this->db->affected_rows() > 0) {
 					$this->session->set_flashdata('success', 'Data Barang berhasil disimpan');
 				}
-				$this->session->set_flashdata('item_ids', implode(',', $item_ids));
-				redirect('stock/in/add_multiple');
+				// item_ids dikirim lewat query string (bukan hanya flashdata) supaya tidak
+				// hilang kalau session tidak konsisten antar-request di server hosting.
+				redirect('stock/in/add_multiple?ids=' . implode(',', $item_ids));
 			}else if(isset($_POST['edit'])){
 			if($this->item_m->check_barcode($post['barcode'], $post['id'])->num_rows() > 0){
 				$this->session->set_flashdata('error',"Barcode $post[barcode] sudah dipakai barang lain");
