@@ -1552,6 +1552,7 @@ class item extends CI_Controller {
 						'modal'       => $modals[$index],
 						'pk'          => $pks[$index],
 						'price'       => $prices[$index],
+						'stock'       => 0,
 					];
 
 					$this->db->insert('p_item', $params);

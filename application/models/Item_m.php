@@ -246,6 +246,7 @@ class item_m extends CI_Model {
             'modal'       => $post['modal'],
             'pk'          => $post['pk'],
             'price'       => $post['price'],
+            'stock'       => 0,
         ];
         $this->db->insert('p_item', $params);
 
