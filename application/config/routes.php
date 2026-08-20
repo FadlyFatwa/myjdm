@@ -97,26 +97,33 @@ $route['po-cart/create_po']              = 'po_cart/create_po';
 // ── Purchase Order — specific routes BEFORE (:num) wildcard ──
 $route['purchase-order']                 = 'purchase_order/index';
 $route['purchase-order/get_json']        = 'purchase_order/get_json';
-$route['purchase-order/receiving']        = 'purchase_order/receiving_list';
-$route['purchase-order/receiving-data']  = 'purchase_order/receiving_supplier_data';
-$route['purchase-order/history']         = 'purchase_order/receiving_history';
-$route['purchase-order/history-data']    = 'purchase_order/receiving_history_data';
-$route['purchase-order/history/(:num)']         = 'purchase_order/receiving_history_detail/$1';
-$route['purchase-order/history/update-detail']  = 'purchase_order/update_receipt_detail';
-$route['purchase-order/history/delete-detail']  = 'purchase_order/delete_receipt_detail';
-$route['purchase-order/history/add-detail']     = 'purchase_order/add_receipt_detail';
-$route['purchase-order/history/delete/(:num)']  = 'purchase_order/delete_receipt/$1';
+$route['purchase-order/receiving']        = 'penerimaan/receiving_list';
+$route['purchase-order/receiving-data']  = 'penerimaan/receiving_supplier_data';
+$route['purchase-order/history']         = 'penerimaan/receiving_history';
+$route['purchase-order/history-data']    = 'penerimaan/receiving_history_data';
+$route['purchase-order/history/(:num)']         = 'penerimaan/receiving_history_detail/$1';
+$route['purchase-order/history/(:num)/edit']    = 'penerimaan/edit_receipt_form/$1';
+$route['purchase-order/history/update-detail']  = 'penerimaan/update_receipt_detail';
+$route['purchase-order/history/delete-detail']  = 'penerimaan/delete_receipt_detail';
+$route['purchase-order/history/add-detail']     = 'penerimaan/add_receipt_detail';
+$route['purchase-order/history/add-extra-item'] = 'penerimaan/add_receipt_extra_item';
+$route['purchase-order/history/update-invoice'] = 'penerimaan/update_receipt_invoice';
+$route['purchase-order/history/update-ongkir']  = 'penerimaan/update_receipt_ongkir';
+$route['purchase-order/history/delete/(:num)']  = 'penerimaan/delete_receipt/$1';
+$route['purchase-order/history/mark-labeled/(:num)']  = 'penerimaan/mark_labeled/$1';
 $route['purchase-order/add-detail']      = 'purchase_order/add_detail_draft';
 $route['purchase-order/remove-detail']   = 'purchase_order/remove_detail_draft';
 $route['purchase-order/update-detail']   = 'purchase_order/update_detail_draft';
 $route['purchase-order/search-item']     = 'purchase_order/search_item_draft';
 $route['purchase-order/close']           = 'purchase_order/close_po';
-$route['purchase-order/receive']         = 'purchase_order/receive';
-$route['purchase-order/receive/(:num)']  = 'purchase_order/receive_form/$1';
+$route['purchase-order/receive']         = 'penerimaan/receive';
+$route['purchase-order/receive/(:num)']  = 'penerimaan/receive_form/$1';
 $route['purchase-order/confirm-price']   = 'purchase_order/confirm_price_update';
 $route['purchase-order/overdue-count']   = 'purchase_order/overdue_count';
 $route['purchase-order/status']          = 'purchase_order/update_status';
 $route['purchase-order/register-item']   = 'purchase_order/register_temp_item';
+$route['purchase-order/receive-add-item']   = 'penerimaan/receive_add_item';
+$route['purchase-order/receive-direct']     = 'penerimaan/receive_direct_start';
 $route['purchase-order/print/(:num)']    = 'purchase_order/print_po/$1';
 $route['purchase-order/(:num)']          = 'purchase_order/detail/$1';
 
@@ -145,6 +152,7 @@ $route['ar-invoice']                = 'ar_invoice/index';
 $route['ar-invoice/get_json']       = 'ar_invoice/get_json';
 $route['ar-invoice/add']            = 'ar_invoice/add';
 $route['ar-invoice/void/(:num)']    = 'ar_invoice/void/$1';
+$route['ar-invoice/reactivate/(:num)'] = 'ar_invoice/reactivate/$1';
 $route['ar-invoice/refresh-all-due-dates'] = 'ar_invoice/refresh_all_due_dates';
 $route['ar-invoice/detail/(:num)']  = 'ar_invoice/detail/$1';
 
@@ -165,6 +173,30 @@ $route['kontra-bon-payment/add/(:num)']  = 'ar_kontra_bon_payment/add/$1';
 $route['kontra-bon-payment/process']     = 'ar_kontra_bon_payment/process';
 $route['kontra-bon-payment/void/(:num)'] = 'ar_kontra_bon_payment/void/$1';
 
+// ── Finance: Hutang (AP) ────────────────────────────────────
+$route['ap-invoice']                = 'ap_invoice/index';
+$route['ap-invoice/get_json']       = 'ap_invoice/get_json';
+$route['ap-invoice/void/(:num)']    = 'ap_invoice/void/$1';
+$route['ap-invoice/refresh-all-due-dates'] = 'ap_invoice/refresh_all_due_dates';
+$route['ap-invoice/detail/(:num)']  = 'ap_invoice/detail/$1';
+
+$route['ap-payment/process']        = 'ap_payment/process';
+$route['ap-payment/void/(:num)']    = 'ap_payment/void/$1';
+$route['ap-payment/add/(:num)']     = 'ap_payment/add/$1';
+
+// ── Finance: Kontra Bon Hutang (konsolidasi tagihan hutang) ──
+$route['ap-kontra-bon']                     = 'ap_kontra_bon/index';
+$route['ap-kontra-bon/get_json']            = 'ap_kontra_bon/get_json';
+$route['ap-kontra-bon/preview']             = 'ap_kontra_bon/preview';
+$route['ap-kontra-bon/add']                 = 'ap_kontra_bon/add';
+$route['ap-kontra-bon/void/(:num)']         = 'ap_kontra_bon/void/$1';
+$route['ap-kontra-bon/cetak/(:num)']        = 'ap_kontra_bon/cetak/$1';
+$route['ap-kontra-bon/detail/(:num)']       = 'ap_kontra_bon/detail/$1';
+
+$route['ap-kontra-bon-payment/add/(:num)']  = 'ap_kontra_bon_payment/add/$1';
+$route['ap-kontra-bon-payment/process']     = 'ap_kontra_bon_payment/process';
+$route['ap-kontra-bon-payment/void/(:num)'] = 'ap_kontra_bon_payment/void/$1';
+
 // ── Migrasi data piutang lama (SEKALI PAKAI — hapus setelah dipakai) ──
 $route['migrate-ar']      = 'migrate_ar/index';
 $route['migrate-ar/run']  = 'migrate_ar/run';
@@ -175,10 +207,41 @@ $route['beban/get_json']     = 'beban/get_json';
 $route['beban/add']          = 'beban/add';
 $route['beban/void/(:num)']  = 'beban/void/$1';
 
+// ── SDM: Karyawan ───────────────────────────────────────────
+$route['karyawan']             = 'karyawan/index';
+$route['karyawan/add']         = 'karyawan/add';
+$route['karyawan/edit/(:num)'] = 'karyawan/edit/$1';
+$route['karyawan/process']     = 'karyawan/process';
+$route['karyawan/del/(:num)']  = 'karyawan/del/$1';
+
+// ── SDM: Absensi & Uang Makan Karyawan ──────────────────────
+$route['absensi']                      = 'absensi/index';
+$route['absensi/history']              = 'absensi/history';
+$route['absensi/history-json']         = 'absensi/history_json';
+$route['absensi/save']                 = 'absensi/save';
+$route['absensi/process']              = 'absensi/process';
+$route['absensi/update-tarif']         = 'absensi/update_tarif';
+$route['absensi/void/(:num)']          = 'absensi/void/$1';
+$route['absensi/(:num)-(:num)-(:num)'] = 'absensi/index/$1/$2/$3';
+
 // ── Report: Piutang ────────────────────────────────────────
 $route['report-ar']                    = 'report_ar/index';
 $route['report-ar/aging']              = 'report_ar/aging';
 $route['report-ar/cetak-aging']        = 'report_ar/cetak_aging';
 $route['report-ar/export-aging']       = 'report_ar/export_excel_aging';
+$route['report-ar/daftar']             = 'report_ar/daftar';
+$route['report-ar/cetak-daftar']       = 'report_ar/cetak_daftar';
+$route['report-ar/export-daftar']      = 'report_ar/export_excel_daftar';
 $route['report-ar/kartu/(:num)']       = 'report_ar/kartu_piutang/$1';
 $route['report-ar/cetak-kartu/(:num)'] = 'report_ar/cetak_kartu/$1';
+
+// ── Report: Hutang ──────────────────────────────────────────
+$route['report-ap']                    = 'report_ap/index';
+$route['report-ap/aging']              = 'report_ap/aging';
+$route['report-ap/cetak-aging']        = 'report_ap/cetak_aging';
+$route['report-ap/export-aging']       = 'report_ap/export_excel_aging';
+$route['report-ap/daftar']             = 'report_ap/daftar';
+$route['report-ap/cetak-daftar']       = 'report_ap/cetak_daftar';
+$route['report-ap/export-daftar']      = 'report_ap/export_excel_daftar';
+$route['report-ap/kartu/(:num)']       = 'report_ap/kartu_hutang/$1';
+$route['report-ap/cetak-kartu/(:num)'] = 'report_ap/cetak_kartu/$1';

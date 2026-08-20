@@ -14,7 +14,7 @@
             <h3 class="box-title"><i class="fa fa-list"></i> Daftar Invoice Piutang</h3>
             <?php if (in_array($this->session->userdata('level'), [1, 2])): ?>
             <div class="box-tools pull-right">
-                <?php if ($this->session->userdata('level') == 1): ?>
+                <?php if (in_array($this->session->userdata('level'), [1, 2])): ?>
                 <a href="<?= site_url('migrate-ar') ?>" class="btn btn-warning btn-sm" title="Sekali pakai: bawa transaksi kredit lama ke modul AR">
                     <i class="fa fa-exchange"></i> Migrasi Data Lama
                 </a>

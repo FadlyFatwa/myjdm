@@ -11,9 +11,9 @@ class Dashboard extends CI_Controller {
 	}
 	public function index()
 	{
-		$data['sum_today']   = (int) $this->db->query("SELECT COALESCE(SUM(final_price),0) AS v FROM t_sale WHERE DATE(date)=CURDATE() AND final_price > 50")->row()->v;
-		$data['sum_month']   = (int) $this->db->query("SELECT COALESCE(SUM(final_price),0) AS v FROM t_sale WHERE YEAR(date)=YEAR(CURDATE()) AND MONTH(date)=MONTH(CURDATE()) AND final_price > 1")->row()->v;
-		$data['count_today'] = (int) $this->db->query("SELECT COUNT(*) AS v FROM t_sale WHERE DATE(date)=CURDATE() AND final_price > 50")->row()->v;
+		$data['sum_today']   = (int) $this->db->query("SELECT COALESCE(SUM(final_price),0) AS v FROM t_sale WHERE DATE(date)=CURDATE() AND final_price > 50 AND is_cancelled = 0")->row()->v;
+		$data['sum_month']   = (int) $this->db->query("SELECT COALESCE(SUM(final_price),0) AS v FROM t_sale WHERE YEAR(date)=YEAR(CURDATE()) AND MONTH(date)=MONTH(CURDATE()) AND final_price > 1 AND is_cancelled = 0")->row()->v;
+		$data['count_today'] = (int) $this->db->query("SELECT COUNT(*) AS v FROM t_sale WHERE DATE(date)=CURDATE() AND final_price > 50 AND is_cancelled = 0")->row()->v;
 		$data['po_aktif']    = (int) $this->db->query("SELECT COUNT(*) AS v FROM po_header WHERE status IN ('sent','partial')")->row()->v;
 		$data['cart_items']  = (int) $this->db->query("SELECT COUNT(*) AS v FROM po_cart")->row()->v;
 		$this->template->load('template', 'dashboard_main', $data);
@@ -24,7 +24,7 @@ class Dashboard extends CI_Controller {
 		$rows = $this->db->query(
 			"SELECT DATE(date) AS d, SUM(final_price) AS total, COUNT(*) AS cnt
 			 FROM t_sale
-			 WHERE date >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) AND final_price > 50
+			 WHERE date >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) AND final_price > 50 AND is_cancelled = 0
 			 GROUP BY DATE(date) ORDER BY d ASC"
 		)->result();
 
@@ -53,9 +53,27 @@ class Dashboard extends CI_Controller {
 			 JOIN t_sale ON t_sale_detail.sale_id = t_sale.sale_id
 			 JOIN p_item ON t_sale_detail.item_id = p_item.item_id
 			 WHERE YEAR(t_sale.date)=YEAR(CURDATE()) AND MONTH(t_sale.date)=MONTH(CURDATE())
-			       AND t_sale.final_price > 50 AND t_sale_detail.price_sale > 1
+			       AND t_sale.final_price > 50 AND t_sale_detail.price_sale > 1 AND t_sale.is_cancelled = 0
 			 GROUP BY t_sale_detail.item_id
 			 ORDER BY total_qty DESC LIMIT 5"
+		)->result();
+
+		echo json_encode($rows);
+		exit();
+	}
+
+	public function get_top_customers_json()
+	{
+		$rows = $this->db->query(
+			"SELECT customer.customer_id, customer.nama_customer,
+			        COUNT(t_sale.sale_id) AS total_transaksi,
+			        SUM(t_sale.final_price) AS total_belanja
+			 FROM t_sale
+			 JOIN customer ON t_sale.customer_id = customer.customer_id
+			 WHERE YEAR(t_sale.date)=YEAR(CURDATE()) AND MONTH(t_sale.date)=MONTH(CURDATE())
+			       AND t_sale.final_price > 50 AND t_sale.is_cancelled = 0
+			 GROUP BY t_sale.customer_id
+			 ORDER BY total_belanja DESC LIMIT 5"
 		)->result();
 
 		echo json_encode($rows);
@@ -69,7 +87,7 @@ class Dashboard extends CI_Controller {
 			        date, user.nama AS kasir
 			 FROM t_sale
 			 JOIN user ON t_sale.user_id = user.user_id
-			 WHERE t_sale.final_price > 50
+			 WHERE t_sale.final_price > 50 AND t_sale.is_cancelled = 0
 			 ORDER BY t_sale.sale_id DESC LIMIT 7"
 		)->result();
 
@@ -100,13 +118,13 @@ class Dashboard extends CI_Controller {
 		$uid = (int) $this->session->userdata('userid');
 		$today = $this->db->query(
 			"SELECT COALESCE(SUM(final_price),0) AS sum_today, COUNT(*) AS count_today
-			 FROM t_sale WHERE DATE(date)=CURDATE() AND user_id=? AND final_price > 50",
+			 FROM t_sale WHERE DATE(date)=CURDATE() AND user_id=? AND final_price > 50 AND is_cancelled = 0",
 			[$uid]
 		)->row();
 		$month = $this->db->query(
 			"SELECT COALESCE(SUM(final_price),0) AS sum_month
 			 FROM t_sale WHERE YEAR(date)=YEAR(CURDATE()) AND MONTH(date)=MONTH(CURDATE())
-			   AND user_id=? AND final_price > 50",
+			   AND user_id=? AND final_price > 50 AND is_cancelled = 0",
 			[$uid]
 		)->row();
 		echo json_encode([
@@ -122,7 +140,7 @@ class Dashboard extends CI_Controller {
 		$uid  = (int) $this->session->userdata('userid');
 		$rows = $this->db->query(
 			"SELECT sale_id, invoice, customer_name, final_price, date
-			 FROM t_sale WHERE user_id=? AND final_price > 50
+			 FROM t_sale WHERE user_id=? AND final_price > 50 AND is_cancelled = 0
 			 ORDER BY sale_id DESC LIMIT 7",
 			[$uid]
 		)->result();
@@ -242,10 +260,23 @@ class Dashboard extends CI_Controller {
 		if (isset($_POST['order'][0]['column'])) {
 			$column_index = intval($_POST['order'][0]['column']); // Column index
 			$column_name = $_POST['columns'][$column_index]['data']; // Column name
-			$column_sort_order = $_POST['order'][0]['dir']; // Ascending or Descending
-		
-			// Apply sorting berdasarkan kolom yang dipilih
-			$this->db->order_by($column_name, $column_sort_order);
+			$column_sort_order = $_POST['order'][0]['dir'] === 'desc' ? 'DESC' : 'ASC'; // Ascending or Descending
+
+			$allowed_columns = [
+				'barcode'       => 'p_item.barcode',
+				'nama_item'     => 'p_item.nama_item',
+				'nama_supplier' => 'supplier.nama_supplier',
+				'nama_category' => 'p_category.nama_category',
+				'nama_unit'     => 'p_unit.nama_unit',
+				'modal'         => 'p_item.modal',
+				'pk'            => 'p_item.pk',
+				'price'         => 'p_item.price',
+				'stock'         => 'p_item.stock',
+				'total_sold'    => 'total_sold',
+			];
+			if (isset($allowed_columns[$column_name])) {
+				$this->db->order_by($allowed_columns[$column_name], $column_sort_order);
+			}
 		} else {
 			// Default sorting: stock ASC dan total_sold DESC
 			$this->db->order_by('p_item.stock', 'ASC'); // Stok ascending
@@ -274,10 +305,10 @@ class Dashboard extends CI_Controller {
 				return array(
 					'no' => $index + 1, // Sequential number
 					'barcode' => $row['barcode'],
-					'nama_item' => $row['nama_item'],
-					'nama_supplier' => $row['nama_supplier'],
-					'nama_category' => $row['nama_category'],
-					'nama_unit' => $row['nama_unit'],
+					'nama_item' => htmlspecialchars($row['nama_item']),
+					'nama_supplier' => htmlspecialchars($row['nama_supplier'] ?? ''),
+					'nama_category' => htmlspecialchars($row['nama_category'] ?? ''),
+					'nama_unit' => htmlspecialchars($row['nama_unit'] ?? ''),
 					'modal' => indo_currency($row['modal']),
 					'pk' => $row['pk'],
 					'price' => indo_currency($row['price']),
@@ -340,13 +371,22 @@ class Dashboard extends CI_Controller {
 		if (isset($_POST['order'][0]['column'])) {
 			$column_index = intval($_POST['order'][0]['column']); // Column index
 			$column_name = $_POST['columns'][$column_index]['data']; // Column name
-			$column_sort_order = $_POST['order'][0]['dir']; // Ascending or Descending
-	
-			// Apply sorting
-			if ($column_name == 'total_sold') {
-				$this->db->order_by('total_sold', $column_sort_order); // Sorting by total sold
-			} else {
-				$this->db->order_by($column_name, $column_sort_order);
+			$column_sort_order = $_POST['order'][0]['dir'] === 'desc' ? 'DESC' : 'ASC'; // Ascending or Descending
+
+			$allowed_columns = [
+				'barcode'       => 'p_item.barcode',
+				'nama_item'     => 'p_item.nama_item',
+				'nama_supplier' => 'supplier.nama_supplier',
+				'nama_category' => 'p_category.nama_category',
+				'nama_unit'     => 'p_unit.nama_unit',
+				'modal'         => 'p_item.modal',
+				'pk'            => 'p_item.pk',
+				'price'         => 'p_item.price',
+				'stock'         => 'p_item.stock',
+				'total_sold'    => 'total_sold',
+			];
+			if (isset($allowed_columns[$column_name])) {
+				$this->db->order_by($allowed_columns[$column_name], $column_sort_order);
 			}
 		} else {
 			$this->db->order_by('total_sold', 'DESC'); // Default sorting
@@ -373,10 +413,10 @@ class Dashboard extends CI_Controller {
 				return array(
 					'no' => $index + 1, // Sequential number
 					'barcode' => $row['barcode'],
-					'nama_item' => $row['nama_item'],
-					'nama_supplier' => $row['nama_supplier'],
-					'nama_category' => $row['nama_category'],
-					'nama_unit' => $row['nama_unit'],
+					'nama_item' => htmlspecialchars($row['nama_item']),
+					'nama_supplier' => htmlspecialchars($row['nama_supplier'] ?? ''),
+					'nama_category' => htmlspecialchars($row['nama_category'] ?? ''),
+					'nama_unit' => htmlspecialchars($row['nama_unit'] ?? ''),
 					'modal' => indo_currency($row['modal']),
 					'pk' => $row['pk'],
 					'price' => indo_currency($row['price']),
@@ -436,10 +476,10 @@ class Dashboard extends CI_Controller {
 			"SELECT COALESCE(SUM(final_price),0) AS v FROM t_sale
 			 WHERE YEAR(date)=YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
 			   AND MONTH(date)=MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
-			   AND final_price > 1"
+			   AND final_price > 1 AND is_cancelled = 0"
 		)->row()->v;
 		$kasir_active = (int) $this->db->query(
-			"SELECT COUNT(DISTINCT user_id) AS v FROM t_sale WHERE DATE(date)=CURDATE() AND final_price > 50"
+			"SELECT COUNT(DISTINCT user_id) AS v FROM t_sale WHERE DATE(date)=CURDATE() AND final_price > 50 AND is_cancelled = 0"
 		)->row()->v;
 		echo json_encode(['sum_last_month' => $sum_last_month, 'kasir_active_today' => $kasir_active]);
 		exit();
@@ -505,7 +545,7 @@ class Dashboard extends CI_Controller {
 			"SELECT COALESCE(AVG(daily_total),0) AS v FROM (
 			    SELECT DATE(date) AS d, SUM(final_price) AS daily_total
 			    FROM t_sale
-			    WHERE user_id=? AND date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND final_price > 50
+			    WHERE user_id=? AND date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND final_price > 50 AND is_cancelled = 0
 			    GROUP BY DATE(date)
 			 ) AS t",
 			[$uid]
@@ -522,7 +562,7 @@ class Dashboard extends CI_Controller {
 			 FROM t_sale_detail tsd
 			 JOIN t_sale ts ON tsd.sale_id = ts.sale_id
 			 JOIN p_item ON tsd.item_id = p_item.item_id
-			 WHERE ts.user_id=? AND DATE(ts.date)=CURDATE() AND ts.final_price > 50
+			 WHERE ts.user_id=? AND DATE(ts.date)=CURDATE() AND ts.final_price > 50 AND ts.is_cancelled = 0
 			 GROUP BY tsd.item_id ORDER BY qty DESC LIMIT 3",
 			[$uid]
 		)->result();

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Rekap Pemesanan Agustus 2026</title>
+<style>
+  :root {
+    --bg: #eef1f0;
+    --card: #ffffff;
+    --border: #dde3e1;
+    --text: #1c2624;
+    --muted: #62766f;
+    --accent: #0f6e5c;
+    --accent-soft: #e2f1ec;
+    --flag-bg: #fff6e6;
+    --flag-border: #f0cd8f;
+    --ms-text: #8a5200;
+    --ms-dot: #c97a00;
+    --shadow: 0 1px 2px rgba(20, 40, 34, 0.06);
+  }
+  :root[data-theme="dark"] {
+    --bg: #10201c;
+    --card: #15332b;
+    --border: #24443b;
+    --text: #e3f0ea;
+    --muted: #8bab9f;
+    --accent: #3ecfa8;
+    --accent-soft: #1b3a32;
+    --flag-bg: #3a2c12;
+    --flag-border: #6e521f;
+    --ms-text: #ffcf7a;
+    --ms-dot: #ffb84d;
+    --shadow: 0 1px 3px rgba(0,0,0,0.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10201c;
+      --card: #15332b;
+      --border: #24443b;
+      --text: #e3f0ea;
+      --muted: #8bab9f;
+      --accent: #3ecfa8;
+      --accent-soft: #1b3a32;
+      --flag-bg: #3a2c12;
+      --flag-border: #6e521f;
+      --ms-text: #ffcf7a;
+      --ms-dot: #ffb84d;
+      --shadow: 0 1px 3px rgba(0,0,0,0.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body {
+    font-family: "Segoe UI", -apple-system, Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 28px 24px 48px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  .eyebrow {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 13.5px;
+    margin-bottom: 22px;
+    max-width: 62ch;
+    line-height: 1.5;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .stat .num {
+    font-size: 21px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .stat .num.accent { color: var(--accent); }
+  .stat .num.ms { color: var(--ms-text); }
+  .stat .label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 14px;
+    margin-bottom: 14px;
+  }
+  .legend .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ms-dot);
+    display: inline-block;
+    flex: none;
+  }
+
+  input.filter-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 13.5px;
+    margin-bottom: 14px;
+  }
+  input.filter-input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  input.filter-input::placeholder { color: var(--muted); }
+
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .table-scroll { overflow-x: auto; max-height: 78vh; }
+
+  table.po-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.po-table thead th {
+    position: sticky; top: 0;
+    background: var(--accent-soft);
+    color: var(--text);
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 11.5px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    z-index: 1;
+  }
+  table.po-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  table.po-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.po-table td.nowrap { white-space: nowrap; }
+  table.po-table td.barcode {
+    white-space: nowrap;
+    font-family: "Consolas", "Courier New", monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+  table.po-table td.item-name { max-width: 400px; }
+  table.po-table tbody tr:hover { background: var(--accent-soft); }
+  table.po-table tbody tr.flagged { background: var(--flag-bg); }
+  table.po-table tbody tr.flagged:hover { filter: brightness(0.98); }
+
+  .muted { color: var(--muted); }
+
+  .chip-cell { white-space: normal; min-width: 180px; }
+  .chip {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 1px 3px 1px 0;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: help;
+  }
+  .chip-ordered {
+    color: var(--ms-text);
+    background: var(--flag-bg);
+    border-color: var(--flag-border);
+  }
+  .chip-lg { font-size: 11.5px; padding: 2px 9px; }
+  .chip-sep { color: var(--muted); font-weight: 400; margin-right: 3px; }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 24px;
+  }
+
+  @media (max-width: 720px) {
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+</head><body><div class="wrap">
+  <div class="eyebrow">Rekap Pengadaan &middot; Data Live dari Database</div>
+  <h1>Pemesanan (PO) Bulan Agustus 2026</h1>
+  <div class="subtitle">
+    Seluruh baris Purchase Order dengan tanggal PO 1&ndash;4 Agustus 2026 (status <code>cancelled</code> dikecualikan) &mdash;
+    <b>data belum penuh sebulan</b>, per tanggal dokumen ini dibuat baru tanggal 5 Agustus 2026.
+    Diambil langsung dari tabel <code>po_header</code> &amp; <code>po_detail</code>.
+    Kolom <b>Supplier</b> menampilkan supplier yang benar-benar dipesan pada PO tersebut;
+    kolom <b>Supplier Tersedia</b> menampilkan semua supplier yang tercatat bisa memasok barang itu (dari <code>supplier_barang</code>),
+    dengan supplier yang dipesan ditandai warna.
+  </div>
+
+  <div class="stat-row">
+    <div class="stat"><div class="num accent">14</div><div class="label">Jumlah PO</div></div>
+    <div class="stat"><div class="num">106</div><div class="label">Baris Item Dipesan</div></div>
+    <div class="stat"><div class="num">221</div><div class="label">Total Qty Order</div></div>
+    <div class="stat"><div class="num ms">13 <span style="font-size:13px;font-weight:600;">(12.3%)</span></div><div class="label">Item Multi-Supplier</div></div>
+  </div>
+
+  <div class="legend"><span class="dot"></span> Baris disorot &amp; chip warna oranye = supplier yang benar-benar dipesan; chip abu-abu = supplier lain yang juga bisa memasok barang ini (arahkan kursor ke tiap chip untuk nama lengkap)</div>
+
+  <input type="text" class="filter-input" id="filterInput" placeholder="Cari barcode / nama item / supplier / no PO...">
+
+  <div class="table-card">
+    <div class="table-scroll">
+      <table class="po-table" id="poTable">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Tanggal</th>
+            <th>Barcode</th>
+            <th>Item</th>
+            <th>Supplier Dipesan</th>
+            <th class="num">Qty Order</th>
+            <th>Supplier Tersedia</th>
+          </tr>
+        </thead>
+        <tbody>
+<tr class=""><td class="num muted">1</td><td class="muted nowrap">1 Agustus</td><td class="barcode">08559</td><td class="item-name">Pulley Alternator Innova Reborn/Hiace Commuter ORCA 27415-0L050</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class="flagged"><td class="num muted">2</td><td class="muted nowrap">1 Agustus</td><td class="barcode">00402</td><td class="item-name">Kopling &#039;G&#039; 31250-BZ160 </td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip" title="ASC (ASCO)">ASC</span><span class="chip-sep">,</span> <span class="chip" title="TRN (Tarno Irian)">TRN</span><span class="chip-sep">,</span> <span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span><span class="chip-sep">,</span> <span class="chip" title="ECP (Eito Cahaya Perdana)">ECP</span></td></tr>
+<tr class=""><td class="num muted">3</td><td class="muted nowrap">1 Agustus</td><td class="barcode">02806</td><td class="item-name">C/M Assy Kijang 5K Super Sanyco 31410-27022</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">4</td><td class="muted nowrap">1 Agustus</td><td class="barcode">10691</td><td class="item-name">Bearing F/W Avanza New/Veloz (ABS) NSK 38BWD28DCA98</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">5</td><td class="muted nowrap">1 Agustus</td><td class="barcode">14624</td><td class="item-name">Tierod Hyundai Accent 98-02 CTR CE-2907.1 (56820-22000)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">6</td><td class="muted nowrap">1 Agustus</td><td class="barcode">01212</td><td class="item-name">Kopling Panther 2.5 Exedy IS 160 01 LU</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">7</td><td class="muted nowrap">1 Agustus</td><td class="barcode">01038</td><td class="item-name"> Dekrup Panther 2.5 Exedy IS 252 02L</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">8</td><td class="muted nowrap">1 Agustus</td><td class="barcode">08941</td><td class="item-name">W/C RR LH Rush/Terios/Taruna (Nepel) Sanyco 47570-87612</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">9</td><td class="muted nowrap">1 Agustus</td><td class="barcode">00997</td><td class="item-name">Kopling Innova Reborn Bensin &#039;G&#039; 31250-0K301/2</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">10</td><td class="muted nowrap">1 Agustus</td><td class="barcode">02975</td><td class="item-name">Shockbreker RR Fortuner VRZ &#039;G&#039; 48530-0K060</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">11</td><td class="muted nowrap">1 Agustus</td><td class="barcode">02856</td><td class="item-name">C/O Assy Hardtop 2F Bensin Sanyco 31470-60071</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">12</td><td class="muted nowrap">1 Agustus</td><td class="barcode">09550</td><td class="item-name">Brake Pad FR Kijang 5K/7K &#039;G&#039; 04465-YZZZ1</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">13</td><td class="muted nowrap">1 Agustus</td><td class="barcode">09251</td><td class="item-name">Brake Shoe Kijang 5K/7K &#039;G&#039; 04495-YZZZ1</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class="flagged"><td class="num muted">14</td><td class="muted nowrap">1 Agustus</td><td class="barcode">11089</td><td class="item-name">A/F Kijang 7K EFI &#039;G&#039; 17801-YZZZ1</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip" title="JM (Jakarta Motor)">JM</span><span class="chip-sep">,</span> <span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">15</td><td class="muted nowrap">1 Agustus</td><td class="barcode">13679</td><td class="item-name">Delco Assy + CDI Kijang 5K/7K FMT DF8091</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">16</td><td class="muted nowrap">1 Agustus</td><td class="barcode">03762</td><td class="item-name">Support Shock FR Camry ACV40R/50/51 07-18 Bensco 48609-06230/06340</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BJ</span> <span class="muted">(BERKAT JAYA)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BJ (BERKAT JAYA) — supplier yang dipesan">BJ</span></td></tr>
+<tr class=""><td class="num muted">17</td><td class="muted nowrap">1 Agustus</td><td class="barcode">01256</td><td class="item-name">Brake Pad RR Xtrail T30/T31/C26/Grand Vitara Bensco</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BJ</span> <span class="muted">(BERKAT JAYA)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="BJ (BERKAT JAYA) — supplier yang dipesan">BJ</span></td></tr>
+<tr class=""><td class="num muted">18</td><td class="muted nowrap">1 Agustus</td><td class="barcode">02450</td><td class="item-name">Rack End CRV Gen2 02-06 Heiker HLT-033 (53521-S9A-003)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">19</td><td class="muted nowrap">1 Agustus</td><td class="barcode">08495</td><td class="item-name">Tromol Livina Old 07-19/Evalia/Latio 04-On Birkens NBD-008 (43206-CJ00A)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">20</td><td class="muted nowrap">1 Agustus</td><td class="barcode">13443</td><td class="item-name">Piston Kaliper FR Civic Ferio/Stream/Jazz GK5/City Gen6 GM6/Mobilio/BRV/Freed Birkens 43216-SR3-V01 </td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">21</td><td class="muted nowrap">1 Agustus</td><td class="barcode">15810</td><td class="item-name">Tierod Mazda2 Skyactive Heiker MZTE-002/003 (DA6T-32-280/290)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">22</td><td class="muted nowrap">1 Agustus</td><td class="barcode">15753</td><td class="item-name">Rack End Mazda2 Skyactive Heiker MZLT-002 (D09H-32-320)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">23</td><td class="muted nowrap">1 Agustus</td><td class="barcode">04828</td><td class="item-name">Boot Rack CRV Gen3 2.4 &#039;07-12 Fabber BRT-009</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">24</td><td class="muted nowrap">1 Agustus</td><td class="barcode">02668</td><td class="item-name">B/M Assy Ertiga Old 12-18 Birkens 51100-M60M20 B-SBM-S12</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">25</td><td class="muted nowrap">1 Agustus</td><td class="barcode">08846</td><td class="item-name">Boot Rack Rush/Terios OId (P/S) Fabber BRT-028</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">6</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">26</td><td class="muted nowrap">1 Agustus</td><td class="barcode">15212</td><td class="item-name">Fuel Pump Assy Livina Old 07-12 L10/Latio Stecker EFP-FA-053 (17040-EE50C)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">27</td><td class="muted nowrap">1 Agustus</td><td class="barcode">08414</td><td class="item-name">Tierod Ertiga Old &#039;B&#039; 4881/20-74M00</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">28</td><td class="muted nowrap">1 Agustus</td><td class="barcode">04799</td><td class="item-name">AC/F Jazz RS &#039;B&#039; 80292-TG0-T01</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">5</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">29</td><td class="muted nowrap">1 Agustus</td><td class="barcode">12961</td><td class="item-name">Rack End Rush/Terios New &#039;B&#039; 45503-BZ210</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">5</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class="flagged"><td class="num muted">30</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05512</td><td class="item-name">Lower Arm RH Jazz Old/City GD8 04-07 &#039;B&#039; 51350-SAE-T01</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span><span class="chip-sep">,</span> <span class="chip" title="HNS (Achien)">HNS</span></td></tr>
+<tr class=""><td class="num muted">31</td><td class="muted nowrap">1 Agustus</td><td class="barcode">04680</td><td class="item-name">Link Stabil FR HRV &#039;B&#039; 51320/51325-T7A-003</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">32</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05737</td><td class="item-name">Timing Belt L038/L300 Diesel Old Long JP MD134377</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">33</td><td class="muted nowrap">1 Agustus</td><td class="barcode">01530</td><td class="item-name">Fanbelt 7PK 1125 Juke &#039;B&#039; 11720-1KT0A</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">34</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05964</td><td class="item-name">Tierod End Grandmax &#039;B&#039; 45046/7-BZ080</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">35</td><td class="muted nowrap">1 Agustus</td><td class="barcode">06784</td><td class="item-name">Bosh Arm RR Juke &#039;B&#039; 55501-1KA0B</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">36</td><td class="muted nowrap">1 Agustus</td><td class="barcode">03634</td><td class="item-name">Tierod Juke &#039;B&#039; D8520/40-1KA0A</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">37</td><td class="muted nowrap">1 Agustus</td><td class="barcode">07007</td><td class="item-name">Brake Pad FR Innova Reborn &#039;B&#039; 04465-0K430</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">38</td><td class="muted nowrap">1 Agustus</td><td class="barcode">06630</td><td class="item-name">Rack End Brio &#039;B&#039; 53010-TG2-003</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">6</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">39</td><td class="muted nowrap">1 Agustus</td><td class="barcode">15173</td><td class="item-name">Brake Pad FR Calya/Sigra/New Carry &#039;B&#039; 04491-BZ030</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">40</td><td class="muted nowrap">1 Agustus</td><td class="barcode">09399</td><td class="item-name">Brake Pad FR Wuling Confero/Cortez &#039;B&#039; 23948042</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">41</td><td class="muted nowrap">1 Agustus</td><td class="barcode">12038</td><td class="item-name">Bearing F/W Ertiga Old/SX4 (Non ABS) Unifar 45BWD16</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">42</td><td class="muted nowrap">1 Agustus</td><td class="barcode">01903</td><td class="item-name">CV Joint IN R/L Juke 1.5 12-17 AT (25 40 22) Unifar</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">43</td><td class="muted nowrap">1 Agustus</td><td class="barcode">01911</td><td class="item-name">CV Joint IN LH Ertiga Old MT 12-17 (28 38 28) Unifar SK-3-5076</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">44</td><td class="muted nowrap">1 Agustus</td><td class="barcode">01910</td><td class="item-name">CV Joint IN RH Ertiga Old MT 12-17 (28 42 28) Unifar SK-3-5075</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">45</td><td class="muted nowrap">1 Agustus</td><td class="barcode">12058</td><td class="item-name">Bearing F/W Lancer Evo 3 Unifar DAC4074CWCS73</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">46</td><td class="muted nowrap">1 Agustus</td><td class="barcode">12059</td><td class="item-name">Bearing F/W Mirage/Sirion (ABS) Unifar AU0728-1LL/L588</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">47</td><td class="muted nowrap">1 Agustus</td><td class="barcode">14008</td><td class="item-name">Bearing R/W Corolla/Altis Old (ABS)+Sensor Unifar 3DACF026F7AS</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">48</td><td class="muted nowrap">1 Agustus</td><td class="barcode">01898</td><td class="item-name">CV Joint Out R/L March 1.5 11-14/Livina Old L11 1.5 AT (25 49.1 29 I) Unifar NI-1-1175</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">49</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05549</td><td class="item-name">CV Joint IN R/L March 1.5 11-14 AT (25 40 26) Unifar NI-3-5194</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">50</td><td class="muted nowrap">1 Agustus</td><td class="barcode">07129</td><td class="item-name">Bearing R/W Evalia Unifar HUB 238-T10</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">51</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05079</td><td class="item-name">Bearing Support Vios/Yaris Gen3 13-On Unifar 48619-0D040</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">52</td><td class="muted nowrap">1 Agustus</td><td class="barcode">16237</td><td class="item-name">Shockbreker RR Grandmax Minibus &#039;G&#039; 48531-YZ275</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span></td></tr>
+<tr class=""><td class="num muted">53</td><td class="muted nowrap">1 Agustus</td><td class="barcode">16804</td><td class="item-name">O/F Matic/Stainer Oil Calya/Sigra &#039;G&#039; 35303-B1020</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span></td></tr>
+<tr class=""><td class="num muted">54</td><td class="muted nowrap">1 Agustus</td><td class="barcode">14245</td><td class="item-name">Brake Shoe Avanza/Xenia &#039;G&#039; 04495-YZ010-001</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span></td></tr>
+<tr class="flagged"><td class="num muted">55</td><td class="muted nowrap">1 Agustus</td><td class="barcode">14965</td><td class="item-name">Support Shock FR Avanza New/Veloz &#039;G&#039; 48609-BZ070</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span><span class="chip-sep">,</span> <span class="chip" title="ECP (Eito Cahaya Perdana)">ECP</span><span class="chip-sep">,</span> <span class="chip" title="HND (Hendi tyt)">HND</span></td></tr>
+<tr class="flagged"><td class="num muted">56</td><td class="muted nowrap">1 Agustus</td><td class="barcode">16374</td><td class="item-name">Fanbelt AC 4PK 710 Grandmax &#039;G&#039; 9004A-91051</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span><span class="chip-sep">,</span> <span class="chip" title="AD (Kang Ade )">AD</span><span class="chip-sep">,</span> <span class="chip" title="ECP (Eito Cahaya Perdana)">ECP</span></td></tr>
+<tr class="flagged"><td class="num muted">57</td><td class="muted nowrap">1 Agustus</td><td class="barcode">13805</td><td class="item-name">Brake Pad FR Grandmax/Luxio &#039;G&#039; 04465-YZ200-001</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip" title="PSS (Pratama Sukses Sentosa)">PSS</span><span class="chip-sep">,</span> <span class="chip" title="ASC (ASCO)">ASC</span><span class="chip-sep">,</span> <span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span></td></tr>
+<tr class="flagged"><td class="num muted">58</td><td class="muted nowrap">1 Agustus</td><td class="barcode">14316</td><td class="item-name">Strainer Oli Grandmax &#039;G&#039; 15140-BZ040-001</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span><span class="chip-sep">,</span> <span class="chip" title="ECP (Eito Cahaya Perdana)">ECP</span><span class="chip-sep">,</span> <span class="chip" title="ASC (ASCO)">ASC</span></td></tr>
+<tr class=""><td class="num muted">59</td><td class="muted nowrap">1 Agustus</td><td class="barcode">15849</td><td class="item-name">Shockbreker FR Alphard/Vellfire Gen3 15-On MONROE 744396SP/744397SP</td><td class="nowrap"><span class="chip chip-ordered chip-lg">SSO</span> <span class="muted">(Sarana Sinar Otomotif)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="SSO (Sarana Sinar Otomotif) — supplier yang dipesan">SSO</span></td></tr>
+<tr class=""><td class="num muted">60</td><td class="muted nowrap">1 Agustus</td><td class="barcode">15085</td><td class="item-name">Shockbreker RR Alphard/Vellfire Gen3 15-On MONROE 378149SP</td><td class="nowrap"><span class="chip chip-ordered chip-lg">SSO</span> <span class="muted">(Sarana Sinar Otomotif)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="SSO (Sarana Sinar Otomotif) — supplier yang dipesan">SSO</span></td></tr>
+<tr class=""><td class="num muted">61</td><td class="muted nowrap">1 Agustus</td><td class="barcode">03972</td><td class="item-name">Ball Joint Ertiga Old 555 &#039;A&#039; SB-S012 (45700-71L00/45201/1-M60M00) </td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">62</td><td class="muted nowrap">1 Agustus</td><td class="barcode">11590</td><td class="item-name">Link Stabil FR HRV 555 &#039;A&#039; SL-H470 (51320/51325-T7A-003)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">63</td><td class="muted nowrap">1 Agustus</td><td class="barcode">09038</td><td class="item-name">Shockbreker FR CRV Gen3/Gen4 Showa QH1G1-105/106 (51611/21-T0N-T01)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">64</td><td class="muted nowrap">1 Agustus</td><td class="barcode">12233</td><td class="item-name">Brake Pad FR CRV Gen3/Gen4/Gen5 Compact 45022-SHJ/TMC-A00</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">65</td><td class="muted nowrap">1 Agustus</td><td class="barcode">00157</td><td class="item-name">Water Pump APV/Futura/Vitara/Escudo 1.6/Baleno GMB GWS-16A (17400-60810/1/2)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">66</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05969</td><td class="item-name">Ball Joint UP Kijang 5K/7K 555 &#039;A&#039; SB-2381 (43360-29056)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class="flagged"><td class="num muted">67</td><td class="muted nowrap">1 Agustus</td><td class="barcode">15317</td><td class="item-name">Rack End Fortuner VRZ 555 &#039;A&#039; SR-A120 (45503-0K070)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip" title="AD (Kang Ade )">AD</span><span class="chip-sep">,</span> <span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">68</td><td class="muted nowrap">1 Agustus</td><td class="barcode">13890</td><td class="item-name">Water Pump Avanza/Xenia/Rush/Grandmax GMB &#039;A&#039; GWT-100A (16100-29115)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">69</td><td class="muted nowrap">1 Agustus</td><td class="barcode">13917</td><td class="item-name">Water Pump Ertiga/Splash/Karimun Estilo/Wagon 3Cyl/Ignis GMB GWS-45A 17400-51K00/17400-58M00</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">70</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05375</td><td class="item-name">Tierod Jazz Old 555 &#039;A&#039; SE-6301 (53540/53560-SEL-T01)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">71</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05452</td><td class="item-name">Water Pump Avanza Grand/Xenia Great/Calya/Sigra/Agya/Ayla 1.2/Sirion/Vios/Yaris Gen3/Sienta GMB &#039;A&#039;</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">72</td><td class="muted nowrap">1 Agustus</td><td class="barcode">14557</td><td class="item-name">Shockbreker FR Jazz RS GK5/City GM6 13-16 Showa QH1F1-105/106 (51611/21-T5L-T41)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class="flagged"><td class="num muted">73</td><td class="muted nowrap">1 Agustus</td><td class="barcode">05440</td><td class="item-name">Support Shock FR Avanza Old/Rush RBI 48609-BZ010</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span><span class="chip-sep">,</span> <span class="chip" title="KS (Kawan Sejati)">KS</span></td></tr>
+<tr class="flagged"><td class="num muted">74</td><td class="muted nowrap">1 Agustus</td><td class="barcode">13823</td><td class="item-name">Bosh Arm Big Avanza Old RBI 48655-BZ010</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">6</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span><span class="chip-sep">,</span> <span class="chip" title="AWS (Atlas Wahana Selaras)">AWS</span></td></tr>
+<tr class=""><td class="num muted">75</td><td class="muted nowrap">1 Agustus</td><td class="barcode">03970</td><td class="item-name">Ball Joint Avanza Old 555 &#039;A&#039; SB-3872 (43330-BZ010)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">76</td><td class="muted nowrap">3 Agustus</td><td class="barcode">01375</td><td class="item-name">Shockbreker FR Xpander/Livina New L12 19-On Bensco 4060A576 / 4060A575</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BJ</span> <span class="muted">(BERKAT JAYA)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BJ (BERKAT JAYA) — supplier yang dipesan">BJ</span></td></tr>
+<tr class=""><td class="num muted">77</td><td class="muted nowrap">3 Agustus</td><td class="barcode">07911</td><td class="item-name">Water Pump Avanza Grand/Xenia Great/Calya/Sigra/Agya/Ayla 1.2/Sirion/Vios/Yaris Gen3/Sienta GNS</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BJ</span> <span class="muted">(BERKAT JAYA)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BJ (BERKAT JAYA) — supplier yang dipesan">BJ</span></td></tr>
+<tr class=""><td class="num muted">78</td><td class="muted nowrap">3 Agustus</td><td class="barcode">01259</td><td class="item-name">Shockbreker FR Alphard/Vellfire Gen3 15-On Bensco 48510-80426 / 48520-80426</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BJ</span> <span class="muted">(BERKAT JAYA)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BJ (BERKAT JAYA) — supplier yang dipesan">BJ</span></td></tr>
+<tr class=""><td class="num muted">79</td><td class="muted nowrap">3 Agustus</td><td class="barcode">15111</td><td class="item-name">W/C RR Terano/Evalia/Serena C24 ABS (Nepel) Birkens NWR-S11 (44100-VE401)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">80</td><td class="muted nowrap">3 Agustus</td><td class="barcode">11983</td><td class="item-name">Support Shock FR Alphard/Vellfire Gen3 15-ON Fabber TSM-019 (48609-58020)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">81</td><td class="muted nowrap">3 Agustus</td><td class="barcode">15915</td><td class="item-name">Bearing Support FR Alphard/Vellfire/Wish/Noah 08UP Hublo HB-TBSP-B03</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">82</td><td class="muted nowrap">3 Agustus</td><td class="barcode">11982</td><td class="item-name">Ball Joint Alphard/Vellfire Gen3 15-ON Heiker H-TBJ-033 (43330-59155)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">83</td><td class="muted nowrap">3 Agustus</td><td class="barcode">14284</td><td class="item-name">Rack Steer Xtrail T31 (EPS) 09-12 Protect 48001-JG00A P-NRT-LC2</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">84</td><td class="muted nowrap">4 Agustus</td><td class="barcode">02143</td><td class="item-name">Link Stabil FR Vios/Yaris Gen2 07-12 555 &#039;A&#039; SL-T020 (48820-52030)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class="flagged"><td class="num muted">85</td><td class="muted nowrap">4 Agustus</td><td class="barcode">09009</td><td class="item-name">Bosh Arm Big Alphard/Vellfire Gen2/Gen3 RBI 48655-28030</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">5</td><td class="chip-cell"><span class="chip" title="AD (Kang Ade )">AD</span><span class="chip-sep">,</span> <span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span><span class="chip-sep">,</span> <span class="chip" title="KS (Kawan Sejati)">KS</span><span class="chip-sep">,</span> <span class="chip" title="AWS (Atlas Wahana Selaras)">AWS</span></td></tr>
+<tr class=""><td class="num muted">86</td><td class="muted nowrap">4 Agustus</td><td class="barcode">10143</td><td class="item-name">Shockbreker FR Jazz Old/City GD8 03-07 SHOWA QH111-105/106 (51605/06-SAE-T02)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">87</td><td class="muted nowrap">4 Agustus</td><td class="barcode">14318</td><td class="item-name">Shockbreker RR Jazz Old/City GD8 03-07 Showa QH122-003 (52610-SEL-T22/SAA-G02)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">88</td><td class="muted nowrap">4 Agustus</td><td class="barcode">12344</td><td class="item-name">Ball Joint Yaris/Vios All Gen 555 &#039;A&#039; SB-3602 (43308-59035)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">89</td><td class="muted nowrap">4 Agustus</td><td class="barcode">00497</td><td class="item-name">Tierod Vios/Yaris Gen2 07-12 555 &#039;A&#039; SE-T021 (45046/45047-59195/59135)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">90</td><td class="muted nowrap">4 Agustus</td><td class="barcode">04698</td><td class="item-name">Rack End Vios/Yaris Gen2 07-12 555 &#039;A&#039; SR-T020 (45503-52070)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">91</td><td class="muted nowrap">4 Agustus</td><td class="barcode">04024</td><td class="item-name">Tierod Livina Old/Evalia 555 &#039;A&#039; SE-4951R/L (48520/48640-3U025)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">92</td><td class="muted nowrap">4 Agustus</td><td class="barcode">04028</td><td class="item-name">Rack End Livina Old/Evalia 555 &#039;A&#039; SR-4950 (48521-3V025)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRA</span> <span class="muted">(Timur Raya Anugrah Damai)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="TRA (Timur Raya Anugrah Damai) — supplier yang dipesan">TRA</span></td></tr>
+<tr class=""><td class="num muted">93</td><td class="muted nowrap">4 Agustus</td><td class="barcode">01570</td><td class="item-name">Cover Timing UP Feroza/Taruna Heiker H-DCT-001 (11346-87102)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">94</td><td class="muted nowrap">4 Agustus</td><td class="barcode">15011</td><td class="item-name">Bosh Arm Small Avanza/Xenia/Rush/Terios (12mm) Fabber DBA-S05 (48654-BZ010)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">95</td><td class="muted nowrap">4 Agustus</td><td class="barcode">08823</td><td class="item-name">Bosh Crossmember Xtrail T31 (Short) &#039;B&#039; 54667-BR00A</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">96</td><td class="muted nowrap">4 Agustus</td><td class="barcode">06147</td><td class="item-name">Link Stabil FR Avanza Grand New 22 &#039;B&#039; 48820-BZ130</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">97</td><td class="muted nowrap">4 Agustus</td><td class="barcode">14018</td><td class="item-name">Thermostat (88C) Agya/Ayla &#039;B&#039; 90048-33097</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">98</td><td class="muted nowrap">4 Agustus</td><td class="barcode">13080</td><td class="item-name">Lower Arm RH Vios/Yaris Gen2 &#039;B&#039; 48068-59095</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">99</td><td class="muted nowrap">4 Agustus</td><td class="barcode">13081</td><td class="item-name">Lower Arm LH Vios/Yaris Gen2 &#039;B&#039; 48069-59095</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">100</td><td class="muted nowrap">4 Agustus</td><td class="barcode">13914</td><td class="item-name">E/Mounting LH Vios/Yaris Gen2 AT ‘B’ 12372-0M090</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">101</td><td class="muted nowrap">4 Agustus</td><td class="barcode">01705</td><td class="item-name">E/Mounting RH Vios/Yaris Gen2 AT &#039;B&#039; 12305-21340 </td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">102</td><td class="muted nowrap">4 Agustus</td><td class="barcode">16163</td><td class="item-name">Tierod Xtrail T31 &#039;B&#039; 48520/40-JG00A</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class="flagged"><td class="num muted">103</td><td class="muted nowrap">4 Agustus</td><td class="barcode">09826</td><td class="item-name">Link Stabil FR RH Fortuner/Hilux &#039;B&#039; 48820-0K030</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span><span class="chip-sep">,</span> <span class="chip" title="YJM (Yendi)">YJM</span></td></tr>
+<tr class="flagged"><td class="num muted">104</td><td class="muted nowrap">4 Agustus</td><td class="barcode">09827</td><td class="item-name">Link Stabil FR LH Fortuner/Hilux &#039;B&#039; 48810-0K010</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span><span class="chip-sep">,</span> <span class="chip" title="YJM (Yendi)">YJM</span></td></tr>
+<tr class=""><td class="num muted">105</td><td class="muted nowrap">4 Agustus</td><td class="barcode">06853</td><td class="item-name">Bearing R/W ABS HRV NTN HUB484T-3</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TAP</span> <span class="muted">(Technindo Puri Perkasa)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TAP (Technindo Puri Perkasa) — supplier yang dipesan">TAP</span></td></tr>
+<tr class=""><td class="num muted">106</td><td class="muted nowrap">4 Agustus</td><td class="barcode">13506</td><td class="item-name">Bearing R/W Ertiga New/Xl7 18-Up NTN HUB650T-5</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TAP</span> <span class="muted">(Technindo Puri Perkasa)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TAP (Technindo Puri Perkasa) — supplier yang dipesan">TAP</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Dihasilkan otomatis dari database &mdash; hanya laporan baca, tidak ada perubahan ke sistem.</footer>
+</div>
+
+<script>
+(function () {
+  var input = document.getElementById('filterInput');
+  var table = document.getElementById('poTable');
+  var rows = table.querySelectorAll('tbody tr');
+  input.addEventListener('input', function () {
+    var q = input.value.toLowerCase();
+    rows.forEach(function (tr) {
+      tr.style.display = tr.textContent.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+    });
+  });
+})();
+</script>
+</body>
+</html>

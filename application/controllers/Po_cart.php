@@ -78,6 +78,7 @@ class Po_cart extends CI_Controller {
 
     public function remove($id)
     {
+        if ($this->input->method() !== 'post') show_404();
         $this->po_cart_m->remove((int) $id);
         redirect('po-cart');
     }

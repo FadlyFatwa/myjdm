@@ -75,6 +75,17 @@ class Ar_kontra_bon_payment_m extends CI_Model {
 
         $this->db->trans_start();
 
+        // Kunci baris kontra bon supaya dua pembayaran bersamaan tidak sama-sama lolos cek saldo di atas
+        $locked = $this->db->query(
+            "SELECT outstanding_amount, status FROM ar_kontra_bon WHERE kontra_bon_id = ? FOR UPDATE",
+            [$post['kontra_bon_id']]
+        )->row();
+
+        if (!$locked || !in_array($locked->status, ['outstanding', 'partial']) || $amount > $locked->outstanding_amount) {
+            $this->db->trans_rollback();
+            throw new Exception('Jumlah pembayaran melebihi sisa kontra bon atau kontra bon sudah tidak aktif.');
+        }
+
         $payment_no = $this->payment_no();
 
         $kas_akun = $post['payment_method'] === 'cash'

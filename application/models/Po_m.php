@@ -55,7 +55,7 @@ class Po_m extends CI_Model {
         $search_value = $this->input->post('search')['value'] ?? '';
 
         $this->db->select('po_header.po_id, po_header.po_number, po_header.po_date, po_header.expected_date,
-            po_header.status, supplier.nama_supplier,
+            po_header.status, po_header.is_direct, supplier.nama_supplier,
             (SELECT MAX(receive_date) FROM po_receipt WHERE po_id = po_header.po_id) AS last_receipt_date', false);
         $this->db->from('po_header');
         $this->db->join('supplier', 'po_header.supplier_id = supplier.supplier_id');
@@ -166,6 +166,54 @@ class Po_m extends CI_Model {
         return $this->db->where('po_id', (int) $po_id)->update('po_header', ['status' => $status]);
     }
 
+    public function recalc_status($po_id)
+    {
+        $sql = "SELECT
+                    COUNT(*) AS total_lines,
+                    SUM(CASE WHEN qty_received >= qty_ordered THEN 1 ELSE 0 END) AS fully_received
+                FROM po_detail WHERE po_id = ?";
+        $stat = $this->db->query($sql, [(int) $po_id])->row();
+        $new_status = ($stat->fully_received == $stat->total_lines && $stat->total_lines > 0)
+            ? 'received' : 'partial';
+        $this->db->where('po_id', (int) $po_id)->update('po_header', ['status' => $new_status]);
+        return $new_status;
+    }
+
+    /**
+     * Daftarkan item baru (belum ada di p_item) — dipakai baik untuk temp item
+     * di draft PO (register_temp_item) maupun barang ekstra saat penerimaan
+     * (receive_add_item). Tidak mengkredit stok — itu tetap tanggung jawab
+     * receive_detail() supaya satu jalur kredit stok.
+     */
+    public function create_item_from_temp($nama_item, $barcode, $pk, $category_id, $unit_id, $modal, $supplier_id)
+    {
+        $this->db->insert('p_item', [
+            'nama_item'   => $nama_item,
+            'barcode'     => $barcode,
+            'pk'          => $pk,
+            'category_id' => $category_id,
+            'unit_id'     => $unit_id,
+            'modal'       => $modal,
+            'price'       => 1,
+            'stock'       => 0,
+            'supplier_id' => $supplier_id,
+            'status'      => 'active',
+        ]);
+        $item_id = $this->db->insert_id();
+        if (!$item_id) return null;
+
+        $existing = $this->db->where('item_id', $item_id)->where('supplier_id', $supplier_id)->get('supplier_barang')->row();
+        if (!$existing) {
+            $this->db->insert('supplier_barang', [
+                'item_id'     => $item_id,
+                'supplier_id' => $supplier_id,
+                'harga_beli'  => $modal,
+            ]);
+        }
+
+        return $item_id;
+    }
+
     public function receive_detail($po_id, $detail_id, $qty_received, $actual_price, $supplier_id, $po_number, $invoice_date = null, $receipt_id = null)
     {
         $this->db->trans_start();
@@ -209,11 +257,13 @@ class Po_m extends CI_Model {
                 "UPDATE p_item SET stock = stock + ? WHERE item_id = ?",
                 [(int) $qty_received, (int) $item_id]
             );
+        }
 
-            // 6. Link receipt_id ke po_detail
-            if ($receipt_id) {
-                $this->db->where('id', (int) $detail_id)->update('po_detail', ['receipt_id' => (int) $receipt_id]);
-            }
+        // 6. Link receipt_id ke po_detail — dilakukan buat SEMUA baris (bukan cuma yang
+        // sudah punya item_id), supaya item belum terdaftar tetap muncul di halaman
+        // detail penerimaan (yang query-nya berdasarkan receipt_id) sampai didaftarkan.
+        if ($receipt_id) {
+            $this->db->where('id', (int) $detail_id)->update('po_detail', ['receipt_id' => (int) $receipt_id]);
         }
 
         $this->db->trans_complete();

@@ -11,6 +11,7 @@ class Sale extends CI_Controller {
         $this->load->model('sale_m');
 		$this->load->model(['customer_m','item_m','return_m']);
 		$this->load->library('sale_service');
+		$this->load->library('whatsapp');
 	}
 
 	public function index()
@@ -184,6 +185,18 @@ class Sale extends CI_Controller {
 				(int) $this->session->userdata('userid')
 			);
 
+			// Transaksi kredit wajib customer terdaftar, supaya piutangnya bisa dilacak
+			// di modul Finance (Ar_invoice_m::create_from_sale() di bawah cuma jalan kalau
+			// keduanya terpenuhi). JS di form sudah mencegah ini, tapi divalidasi ulang di
+			// sini supaya tidak bisa dilewati dengan POST langsung ke endpoint ini.
+			if ($sale_data['payment_status'] === 'belum lunas' && empty($sale_data['customer_id'])) {
+				echo json_encode([
+					'success' => false,
+					'message' => 'Transaksi kredit wajib memilih customer terdaftar (bukan Umum), supaya piutang bisa dilacak di modul Finance.',
+				]);
+				return;
+			}
+
 			// Simpan data penjualan
 			$sale_id = $this->sale_m->add_sale($sale_data);
 
@@ -221,6 +234,13 @@ class Sale extends CI_Controller {
 				if ((int) $item_data->stock <= $threshold) {
 					$type = ((int) $item_data->stock <= 0) ? 'habis' : 'menipis';
 					$label = ($type === 'habis') ? 'Stok habis' : 'Stok menipis';
+
+					// Kirim notifikasi WA ke grup stok (terpisah dari grup penerimaan barang)
+					$wa_stock_pesan = $this->_build_stock_wa_message($item_data, $type);
+					$wa_stock_result = $this->whatsapp->send_to_stock_group($wa_stock_pesan);
+					if (!$wa_stock_result['success']) {
+						log_message('error', '[Sale] WA notifikasi stok gagal terkirim untuk item_id: ' . $item_data->item_id);
+					}
 
 					// Ambil semua supplier item dari supplier_barang
 					$suppliers = $this->db
@@ -298,6 +318,12 @@ class Sale extends CI_Controller {
 	
 	public function update_status() {
 		$sale_id = $this->input->post('sale_id');
+
+		$sale = $this->sale_m->get_sale($sale_id)->row();
+		if (!$sale || $sale->is_cancelled) {
+			echo json_encode(['success' => false, 'message' => 'Transaksi ini sudah dibatalkan, status pembayarannya tidak bisa diubah.']);
+			return;
+		}
 
 		// Transaksi yang sudah dikelola modul AR baru — jangan toggle mentah,
 		// arahkan ke alur pembayaran piutang supaya histori cicilan tetap konsisten.
@@ -458,24 +484,29 @@ class Sale extends CI_Controller {
 		if($query){
 			foreach($query as $row){
 
-				$stok_label = ($row->stock > 0) 
-					? '<span class="label label-success">Stok: '.$row->stock.'</span>' 
+				$stok_label = ($row->stock > 0)
+					? '<span class="label label-success">Stok: '.$row->stock.'</span>'
 					: '<span class="label label-danger">Habis</span>';
+
+				$nama_item = htmlspecialchars($row->nama_item);
+				$barcode   = htmlspecialchars($row->barcode);
+				$pk        = htmlspecialchars($row->pk ?? '');
+				$supplier  = htmlspecialchars($row->nama_supplier ?? '-');
 
 				echo '
 				<a href="#"
 				class="list-group-item item-select"
-				data-id="'.$row->item_id.'"
-				data-name="'.$row->nama_item.'"
-				data-price="'.$row->price.'"
-   				data-stock="'.$row->stock.'"
-				data-pk="'.$row->pk.'"
-				data-barcode="'.$row->barcode.'">
+				data-id="'.(int)$row->item_id.'"
+				data-name="'.$nama_item.'"
+				data-price="'.(int)$row->price.'"
+   				data-stock="'.(int)$row->stock.'"
+				data-pk="'.$pk.'"
+				data-barcode="'.$barcode.'">
 
-					<strong>'.$row->barcode.' - '.$row->nama_item.'</strong><br>
+					<strong>'.$barcode.' - '.$nama_item.'</strong><br>
 					<small>
-						PK: '.($row->pk ?? '-').' |
-						Supplier: '.($row->nama_supplier ?? '-').' |
+						PK: '.($pk ?: '-').' |
+						Supplier: '.$supplier.' |
 						'.$stok_label.' |
 						Harga: '.indo_currency($row->price).'
 					</small>
@@ -532,6 +563,25 @@ class Sale extends CI_Controller {
 	}
 
 	// Merge barang + jasa untuk tampilan nota
+	/**
+	 * Format pesan notifikasi WA untuk stok habis/menipis
+	 */
+	private function _build_stock_wa_message($item_data, $type)
+	{
+		$is_habis = ($type === 'habis');
+		return implode("\n", [
+			$is_habis ? "🚫 *STOK HABIS*" : "⚠️ *STOK MENIPIS*",
+			"━━━━━━━━━━━━━━",
+			"📦 Barang   : {$item_data->nama_item}",
+			"🏷️ Barcode  : " . ($item_data->barcode ?: '-'),
+			"🏭 Supplier : " . ($item_data->nama_supplier ?? '-'),
+			"📉 Sisa     : " . (int) $item_data->stock,
+			"🕐 Waktu    : " . date('d/m/Y H:i'),
+			"━━━━━━━━━━━━━━",
+			"_Notifikasi otomatis dari sistem myjdm_",
+		]);
+	}
+
 	private function _merge_sale_detail($sale_id)
 	{
 		$barang = $this->sale_m->get_sale_detail($sale_id)->result();
@@ -551,9 +601,18 @@ class Sale extends CI_Controller {
 
 	// Di controller Sale.php
 	public function edit($sale_id) {
+		check_allowed_levels([1, 2]);
 		$sale = $this->sale_m->get_sale($sale_id)->row();
+		if (!$sale) {
+			$this->session->set_flashdata('error', 'Transaksi tidak ditemukan.');
+			redirect('report/sale');
+		}
+		if ($sale->is_cancelled) {
+			$this->session->set_flashdata('error', 'Transaksi ini sudah dibatalkan, tidak bisa diedit. Aktifkan kembali dulu kalau perlu diubah.');
+			redirect('report/sale');
+		}
 		$sale_details = $this->sale_m->get_sale_detail($sale_id)->result();
-		
+
 		// Ambil data retur
 		$returned_items = $this->return_m->get_returned_items($sale_id);
 		$returned_data = [];
@@ -578,10 +637,21 @@ class Sale extends CI_Controller {
 	}
 	
 	public function update() {
+		check_allowed_levels([1, 2]);
 		$post = $this->input->post();
 
 		if (empty($post['sale_id'])) {
 			$this->session->set_flashdata('error', 'Sale ID tidak ditemukan.');
+			redirect('report/sale');
+		}
+
+		$existing_sale = $this->sale_m->get_sale($post['sale_id'])->row();
+		if (!$existing_sale) {
+			$this->session->set_flashdata('error', 'Transaksi tidak ditemukan.');
+			redirect('report/sale');
+		}
+		if ($existing_sale->is_cancelled) {
+			$this->session->set_flashdata('error', 'Transaksi ini sudah dibatalkan, tidak bisa diedit.');
 			redirect('report/sale');
 		}
 
@@ -610,13 +680,45 @@ class Sale extends CI_Controller {
 			'final_price'    => $strip($post['grandtotal']),
 		];
 
+		// Piutang (AR) sudah ada pembayaran/masuk kontra bon -> terlalu berisiko disinkron
+		// otomatis kalau nominal/customer/status kredit ikut berubah. Tolak dulu di sini,
+		// SEBELUM t_sale ter-update, biar tidak ada perubahan setengah jalan.
+		$this->load->model('Ar_invoice_m');
+		$existing_ar = $this->Ar_invoice_m->get_by_sale($post['sale_id']);
+		if ($existing_ar && $existing_ar->status !== 'void' && ($existing_ar->paid_amount > 0 || $existing_ar->kontra_bon_id)) {
+			$will_change_amount   = (int) $existing_ar->amount !== (int) $data['final_price'];
+			$will_change_customer = (int) $existing_ar->customer_id !== (int) ($data['customer_id'] ?? 0);
+			$will_change_status   = $data['payment_status'] !== 'belum lunas';
+
+			if ($will_change_amount || $will_change_customer || $will_change_status) {
+				$this->session->set_flashdata('error', 'Piutang ' . $existing_ar->ar_no . ' untuk transaksi ini sudah ada pembayaran dan/atau sudah masuk kontra bon. Selesaikan/batalkan piutangnya dulu di menu Piutang (AR) sebelum mengubah nominal, customer, atau status pembayaran transaksi ini.');
+				redirect('sale/edit/' . $post['sale_id']);
+			}
+		}
+
 		// Proses data detail penjualan
+		$item_ids = array_filter(array_map('intval', $post['item_id']));
+		$modal_map = [];
+		if (!empty($item_ids)) {
+			foreach ($this->db->select('item_id, modal')->where_in('item_id', $item_ids)->get('p_item')->result() as $it) {
+				$modal_map[$it->item_id] = (float) $it->modal;
+			}
+		}
+
 		$details = [];
 		foreach ($post['item_id'] as $key => $item_id) {
+			$price_sale = $strip($post['price'][$key]);
+			$modal      = $modal_map[(int) $item_id] ?? 0;
+
+			if ($modal > 0 && $price_sale < $modal) {
+				$this->session->set_flashdata('error', 'Harga jual "' . $post['nama_barang_jual'][$key] . '" (Rp ' . number_format($price_sale, 0, ',', '.') . ') berada di bawah harga modal (Rp ' . number_format($modal, 0, ',', '.') . '). Perubahan tidak disimpan.');
+				redirect('sale/edit/' . $post['sale_id']);
+			}
+
 			$details[] = [
 				'item_id'          => $item_id,
 				'nama_barang_jual' => $post['nama_barang_jual'][$key],
-				'price_sale'       => $strip($post['price'][$key]),
+				'price_sale'       => $price_sale,
 				'qty'              => (int) $post['qty'][$key],
 				'discount_item'    => $strip($post['discount_item'][$key]),
 				// pakai total_raw[] yang menyimpan nilai mentah tanpa format
@@ -651,7 +753,13 @@ class Sale extends CI_Controller {
 		}
 
 		if ($success) {
-			$this->session->set_flashdata('success', 'Data penjualan berhasil diperbarui.');
+			try {
+				$updated_sale = $this->sale_m->get_sale($post['sale_id'])->row();
+				$this->Ar_invoice_m->sync_from_sale_edit($updated_sale, (int) $this->session->userdata('userid'));
+				$this->session->set_flashdata('success', 'Data penjualan berhasil diperbarui.');
+			} catch (Exception $e) {
+				$this->session->set_flashdata('error', 'Data penjualan tersimpan, tapi sinkronisasi piutang gagal: ' . $e->getMessage());
+			}
 		} else {
 			$this->session->set_flashdata('error', 'Gagal memperbarui data penjualan.');
 		}
@@ -666,12 +774,86 @@ class Sale extends CI_Controller {
 
 	public function del($id)
     {
-        $this->sale_m->del_sale($id);
-        if ($this->db->affected_rows() > 0) {
-            $this->session->set_flashdata('success', 'Data Penjualan berhasil dihapus');
-        } else {
-            $this->session->set_flashdata('error', 'Gagal menghapus Data Penjualan');
+        check_allowed_levels([1, 2]);
+        if ($this->input->method() !== 'post') show_404();
+
+        $sale = $this->sale_m->get_sale($id)->row();
+        if (!$sale) {
+            $this->session->set_flashdata('error', 'Transaksi tidak ditemukan.');
+            redirect('report/sale');
         }
+        if ($sale->is_cancelled) {
+            $this->session->set_flashdata('error', 'Transaksi ini sudah dibatalkan sebelumnya.');
+            redirect('report/sale');
+        }
+
+        // Transaksi kredit yang sudah auto-generate piutang (AR) harus di-void dulu
+        // lewat modul Finance, supaya saldo piutang customer & jurnal tetap konsisten.
+        $this->load->model('Ar_invoice_m');
+        $ar = $this->Ar_invoice_m->get_by_sale($id);
+
+        if ($ar && $ar->status !== 'void') {
+            if ($ar->paid_amount > 0) {
+                $this->session->set_flashdata('error', 'Transaksi ini punya piutang (' . $ar->ar_no . ') yang sudah ada pembayarannya. Void pembayarannya dulu lewat Finance > Piutang, baru batalkan transaksi ini.');
+                redirect('report/sale');
+            }
+            if ($ar->kontra_bon_id) {
+                $this->session->set_flashdata('error', 'Transaksi ini punya piutang (' . $ar->ar_no . ') yang sudah digabung ke kontra bon. Batalkan kontra bon-nya dulu lewat Finance > Kontra Bon, baru batalkan transaksi ini.');
+                redirect('report/sale');
+            }
+
+            try {
+                $this->Ar_invoice_m->void($ar->ar_invoice_id, 'Transaksi penjualan dibatalkan', $this->session->userdata('userid'));
+            } catch (Exception $e) {
+                $this->session->set_flashdata('error', $e->getMessage());
+                redirect('report/sale');
+            }
+        }
+
+        $this->sale_m->cancel_sale($id, 'Dibatalkan dari laporan penjualan', $this->session->userdata('userid'));
+
+        $this->session->set_flashdata('success', 'Transaksi berhasil dibatalkan. Stok sudah dikembalikan' . ($ar ? ', dan piutang terkait sudah di-void.' : '.'));
+        redirect('report/sale');
+    }
+
+    public function reactivate($id)
+    {
+        check_allowed_levels([1, 2]);
+        if ($this->input->method() !== 'post') show_404();
+
+        $sale = $this->sale_m->get_sale($id)->row();
+        if (!$sale) {
+            $this->session->set_flashdata('error', 'Transaksi tidak ditemukan.');
+            redirect('report/sale');
+        }
+        if (!$sale->is_cancelled) {
+            $this->session->set_flashdata('error', 'Transaksi ini tidak dalam status dibatalkan.');
+            redirect('report/sale');
+        }
+
+        try {
+            $this->sale_m->reactivate_sale($id, $this->session->userdata('userid'));
+        } catch (Exception $e) {
+            $this->session->set_flashdata('error', $e->getMessage());
+            redirect('report/sale');
+        }
+
+        // Kalau transaksi ini kredit & piutangnya sempat auto-void saat dibatalkan, aktifkan lagi
+        $ar_msg = '';
+        if ($sale->payment_status === 'belum lunas') {
+            $this->load->model('Ar_invoice_m');
+            $ar = $this->Ar_invoice_m->get_by_sale($id);
+            if ($ar && $ar->status === 'void') {
+                try {
+                    $this->Ar_invoice_m->reactivate($ar->ar_invoice_id, $this->session->userdata('userid'));
+                    $ar_msg = ' Piutang terkait (' . $ar->ar_no . ') juga sudah diaktifkan kembali.';
+                } catch (Exception $e) {
+                    $ar_msg = ' Piutang terkait GAGAL diaktifkan otomatis (' . $e->getMessage() . ') — aktifkan manual lewat Finance > Piutang.';
+                }
+            }
+        }
+
+        $this->session->set_flashdata('success', 'Transaksi berhasil diaktifkan kembali, stok sudah disesuaikan.' . $ar_msg);
         redirect('report/sale');
     }
 

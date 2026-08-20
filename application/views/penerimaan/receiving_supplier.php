@@ -6,7 +6,6 @@
     </h1>
     <ol class="breadcrumb">
         <li><a href="<?= site_url('dashboard') ?>"><i class="fa fa-dashboard"></i> Home</a></li>
-        <li><a href="<?= site_url('purchase-order') ?>">Purchase Order</a></li>
         <li class="active">Penerimaan</li>
     </ol>
 </div>

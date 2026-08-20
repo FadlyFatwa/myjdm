@@ -96,9 +96,9 @@
     foreach ($items as $item) {
         $quantity = (int)$item->quantity;
         $current_date = date('d/m/y', strtotime($item->date));
-        $nama_item = isset($item->nama_item) ? strtoupper(strval($item->nama_item)) : '';
-        $nama_mobil = isset($item->nama_mobil) ? strtoupper(strval($item->nama_mobil)) : '';
-        $no_part = isset($item->no_part) ? strtoupper(strval($item->no_part)) : '';
+        $nama_item = isset($item->nama_item) ? htmlspecialchars(strtoupper(strval($item->nama_item))) : '';
+        $nama_mobil = isset($item->nama_mobil) ? htmlspecialchars(strtoupper(strval($item->nama_mobil))) : '';
+        $no_part = isset($item->no_part) ? htmlspecialchars(strtoupper(strval($item->no_part))) : '';
 
         for ($q = 0; $q < $quantity; $q++) {
             $labels[] = [

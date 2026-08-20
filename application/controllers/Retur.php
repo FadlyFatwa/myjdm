@@ -41,6 +41,10 @@ class Retur extends CI_Controller {
             $this->session->set_flashdata('error', 'Data penjualan tidak ditemukan');
             redirect('report/detail');
         }
+        if ($sale->is_cancelled) {
+            $this->session->set_flashdata('error', 'Transaksi ini sudah dibatalkan, stok sudah otomatis dikembalikan. Tidak bisa diretur lagi.');
+            redirect('report/sale');
+        }
 
         // Ambil detail penjualan
         $sale_detail = $this->sale_m->get_sale_detail($sale_id)->result();
@@ -59,7 +63,42 @@ class Retur extends CI_Controller {
 
     public function process()
     {
+        check_allowed_levels([1, 2, 3]);
         $data = $this->input->post(null, TRUE);
+
+        $sale = $this->sale_m->get_sale($data['sale_id'])->row();
+        if (!$sale || $sale->is_cancelled) {
+            $this->session->set_flashdata('error', 'Transaksi ini sudah dibatalkan, tidak bisa diretur.');
+            redirect('report/sale');
+        }
+
+        // Piutang (AR) sudah ada pembayaran/masuk kontra bon -> retur akan mengurangi
+        // total tagihan, terlalu berisiko disinkron otomatis. Tolak dulu di sini,
+        // SEBELUM t_return/t_return_detail ter-insert, sama seperti pola di Sale::update().
+        $this->load->model('Ar_invoice_m');
+        $existing_ar = $this->Ar_invoice_m->get_by_sale($data['sale_id']);
+        if ($existing_ar && $existing_ar->status !== 'void' && ($existing_ar->paid_amount > 0 || $existing_ar->kontra_bon_id)) {
+            $this->session->set_flashdata('error', 'Piutang ' . $existing_ar->ar_no . ' untuk transaksi ini sudah ada pembayaran dan/atau sudah masuk kontra bon. Selesaikan/batalkan piutangnya dulu di menu Piutang (AR) sebelum meretur barang dari transaksi ini.');
+            redirect('retur/add/' . $data['sale_id']);
+        }
+
+        // Batas qty retur tidak boleh melebihi sisa qty yang masih ada di transaksi ini —
+        // t_sale_detail.qty sudah otomatis berkurang tiap ada retur sebelumnya (trigger
+        // retur_itemstok), jadi nilainya saat ini SUDAH mencerminkan sisa yang benar.
+        $remaining_map = [];
+        foreach ($this->sale_m->get_sale_detail($data['sale_id'])->result() as $d) {
+            $remaining_map[$d->item_id] = (int) $d->qty;
+        }
+        foreach ($data['items'] as $item) {
+            $qty = (int) $item['qty'];
+            if ($qty <= 0) continue;
+            $sisa = $remaining_map[$item['item_id']] ?? 0;
+            if ($qty > $sisa) {
+                $this->session->set_flashdata('error', 'Qty retur untuk salah satu barang melebihi sisa yang masih ada di transaksi ini (sisa: ' . $sisa . ').');
+                redirect('retur/add/' . $data['sale_id']);
+            }
+        }
+
         $return_id = $this->return_m->add_return($data);
 
         // Insert t_return gagal (mis. constraint/tipe data) -> jangan lanjut,
@@ -87,7 +126,17 @@ class Retur extends CI_Controller {
         $this->return_m->add_return_detail($return_details);
 
         if ($this->db->affected_rows() > 0) {
-            $this->session->set_flashdata('success', 'Data Retur berhasil disimpan');
+            // Sinkronkan piutang (AR) kalau transaksi ini kredit — total tagihan sudah
+            // berkurang lewat trigger DB ("kurangi total") begitu t_return ter-insert di atas.
+            try {
+                $updated_sale = $this->sale_m->get_sale($data['sale_id'])->row();
+                if ($updated_sale) {
+                    $this->Ar_invoice_m->sync_from_sale_edit($updated_sale, (int) $this->session->userdata('userid'));
+                }
+                $this->session->set_flashdata('success', 'Data Retur berhasil disimpan');
+            } catch (Exception $e) {
+                $this->session->set_flashdata('error', 'Data Retur tersimpan, tapi sinkronisasi piutang gagal: ' . $e->getMessage());
+            }
         } else {
             $this->session->set_flashdata('error', 'Data Retur gagal disimpan');
         }
@@ -102,6 +151,8 @@ class Retur extends CI_Controller {
 
     public function del($return_id)
     {
+        check_allowed_levels([1, 2]);
+        if ($this->input->method() !== 'post') show_404();
         $this->return_m->delete_return($return_id);
         if ($this->db->affected_rows() > 0) {
             $this->session->set_flashdata('success', 'Data Retur berhasil dihapus');

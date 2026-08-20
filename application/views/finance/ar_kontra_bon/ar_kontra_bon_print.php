@@ -51,11 +51,15 @@
                 <td><?= $no++ ?></td>
                 <td><?= $inv->sale_invoice ?: '-' ?></td>
                 <td><?= tgl_finance($inv->invoice_date) ?></td>
-                <td class="text-right"><?= number_format($inv->amount, 0, ',', '.') ?></td>
+                <td class="text-right"><?= number_format($inv->gross_amount ?: $inv->amount, 0, ',', '.') ?></td>
             </tr>
             <?php endforeach; ?>
             <tr class="total-row">
-                <td colspan="3" class="text-right">TOTAL</td>
+                <td colspan="3" class="text-right">SUBTOTAL</td>
+                <td class="text-right">Rp <?= number_format($subtotal_brutto, 0, ',', '.') ?></td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="3" class="text-right">GRAND TOTAL</td>
                 <td class="text-right">Rp <?= number_format($kb->total_amount, 0, ',', '.') ?></td>
             </tr>
         </tbody>

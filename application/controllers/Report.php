@@ -104,6 +104,9 @@ class Report extends CI_Controller {
         // Ambil detail produk
         $data['products'] = $this->sale_m->get_sale_detail($sale_id)->result();
 
+        // Ambil detail jasa
+        $data['jasa'] = $this->sale_m->get_sale_jasa_detail($sale_id);
+
         $this->load->view('report/sale_detail_modal', $data);
     }
  
@@ -237,10 +240,20 @@ class Report extends CI_Controller {
         if (isset($_POST['order'][0]['column'])) {
             $column_index = intval($_POST['order'][0]['column']); // Column index
             $column_name = $_POST['columns'][$column_index]['data']; // Column name
-            $column_sort_order = $_POST['order'][0]['dir']; // Ascending or Descending
-    
-            // Apply sorting
-            $this->db->order_by($column_name, $column_sort_order);
+            $column_sort_order = $_POST['order'][0]['dir'] === 'desc' ? 'DESC' : 'ASC';
+
+            $allowed_columns = [
+                'nama_customer' => 'nama_customer',
+                'invoice'       => 'invoice',
+                'nama_item'     => 'nama_item',
+                'qty'           => 'qty',
+                'price_sale'    => 'price_sale',
+                'total'         => 'total',
+                'date'          => 'date',
+            ];
+            if (isset($allowed_columns[$column_name])) {
+                $this->db->order_by($allowed_columns[$column_name], $column_sort_order);
+            }
         } else {
             // Default order by 'po' in descending order
             $this->db->order_by('detail_id', 'DESC');
@@ -312,11 +325,20 @@ class Report extends CI_Controller {
 
         // Sorting
         if (isset($_POST['order'][0]['column'])) {
-            $column_index = $_POST['order'][0]['column'];
+            $column_index = intval($_POST['order'][0]['column']);
             $column_name = $_POST['columns'][$column_index]['data'];
-            $column_sort_order = $_POST['order'][0]['dir'];
+            $column_sort_order = $_POST['order'][0]['dir'] === 'desc' ? 'DESC' : 'ASC';
 
-            $this->db->order_by($column_name, $column_sort_order);
+            $allowed_columns = [
+                'invoice'        => 'invoice',
+                'nama_customer'  => 'nama_customer',
+                'total_price'    => 'total_price',
+                'payment_method' => 'payment_method',
+                'date'           => 'date',
+            ];
+            if (isset($allowed_columns[$column_name])) {
+                $this->db->order_by($allowed_columns[$column_name], $column_sort_order);
+            }
         } else {
             $this->db->order_by('date', 'DESC');
         }

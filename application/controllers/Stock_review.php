@@ -31,6 +31,7 @@ class Stock_review extends CI_Controller {
                           FROM t_sale_detail sd
                           INNER JOIN t_sale ts ON sd.sale_id = ts.sale_id
                           WHERE sd.item_id = p_item.item_id
+                            AND ts.is_cancelled = 0
                             AND ts.date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH))";
 
         $in_cart_subquery = "(SELECT 1 FROM po_cart WHERE po_cart.item_id = p_item.item_id LIMIT 1)";

@@ -45,6 +45,11 @@
                         <input type="number" name="payment_term_days" value="<?=$row->payment_term_days?>" class="form-control" min="0">
                     </div>
                     <div class="form-group">
+                        <label>Diskon Brutto&rarr;Netto (%)</label>
+                        <input type="number" step="0.01" name="gross_discount_percent" value="<?=$row->gross_discount_percent?>" class="form-control" min="0" max="100">
+                        <p class="help-block">Kosongkan kalau customer ini tidak punya kesepakatan brutto/netto.</p>
+                    </div>
+                    <div class="form-group">
                         <button type="submit" name="<?=$page?>" class="btn btn-success btn-flat">
                             <i class="fa fa-paper-plane"></i> Simpan
                         </button>

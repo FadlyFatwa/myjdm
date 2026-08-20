@@ -94,6 +94,12 @@
     body.dark-mode .table-hover > tbody > tr:hover { background: #2a2d40 !important; }
     body.dark-mode .bg-gray-light,
     body.dark-mode thead.bg-primary     { background: #1a1d27 !important; }
+    body.dark-mode .table > tfoot > tr,
+    body.dark-mode .table > tfoot > tr > td,
+    body.dark-mode .table > tfoot > tr > th { background: #1a1d27 !important; color: #d1d5db !important; border-color: #2d3148 !important; }
+    body.dark-mode .table tr.bg-gray,
+    body.dark-mode .table tr.bg-gray > td,
+    body.dark-mode .table tr.bg-gray > th   { background: #1a1d27 !important; color: #d1d5db !important; border-color: #2d3148 !important; }
 
     /* Inputs */
     body.dark-mode .form-control,
@@ -503,16 +509,16 @@ $seg2 = $this->uri->segment(2) ?? '';
                       <li <?= ($this->uri->segment(1) == 'item' && $this->uri->segment(2) == 'duplicate') ? 'class="active"' : '' ?>>
                           <a href="<?= site_url('item/duplicate') ?>"><i class="fa fa-clone text-orange"></i> Deteksi Item Mirip</a>
                       </li>
-                      <li <?= ($this->uri->segment(1) == 'item' && $this->uri->segment(2) == 'multi_supplier') ? 'class="active"' : '' ?>>
+                      <!-- <li <?= ($this->uri->segment(1) == 'item' && $this->uri->segment(2) == 'multi_supplier') ? 'class="active"' : '' ?>>
                           <a href="<?= site_url('item/multi_supplier') ?>"><i class="fa fa-truck text-blue"></i> Barang Multi Supplier</a>
-                      </li>
+                      </li> -->
 
                       <li <?= ($this->uri->segment(1) == 'stock' && $this->uri->segment(2) == 'in') ? 'class="active"' : '' ?>>
                           <a href="<?= site_url('stock/in') ?>"><i class="fa fa-download text-green"></i> Stok Masuk</a>
                       </li>
-                      <li <?= ($this->uri->segment(1) == 'stock' && $this->uri->segment(2) == 'in_report') ? 'class="active"' : '' ?>>
+                      <!-- <li <?= ($this->uri->segment(1) == 'stock' && $this->uri->segment(2) == 'in_report') ? 'class="active"' : '' ?>>
                           <a href="<?= site_url('stock/in/report') ?>"><i class="fa fa-download text-green"></i> Laporan Stok Masuk</a>
-                      </li>
+                      </li> -->
                       <li <?= ($this->uri->segment(1) == 'stock' && $this->uri->segment(2) == 'out') ? 'class="active"' : '' ?>>
                           <a href="<?= site_url('stock/out') ?>"><i class="fa fa-upload text-red"></i> Barang Keluar</a>
                       </li>
@@ -619,6 +625,17 @@ $seg2 = $this->uri->segment(2) ?? '';
                         <i class="fa fa-angle-left pull-right"></i>
                     </span>
                 </a>
+                <?php
+                    // Segmen ke-2 di bawah purchase-order/* menentukan controller mana yang
+                    // sebetulnya melayani halaman itu sejak Penerimaan dipisah dari Purchase_order.php:
+                    // 'receiving'/'receive' & 'history' => controller Penerimaan, sisanya (index,
+                    // detail PO, print) => controller Purchase_order. Dipakai supaya highlight menu
+                    // aktif tidak dobel/salah kamar.
+                    $po_seg2 = $this->uri->segment(2);
+                    $is_penerimaan_area = in_array($po_seg2, ['receiving', 'receive']);
+                    $is_history_area    = $po_seg2 == 'history';
+                    $is_po_area         = $seg1 == 'purchase-order' && !$is_penerimaan_area && !$is_history_area;
+                ?>
                 <ul class="treeview-menu">
                     <li <?= $seg1 == 'stock-review' ? 'class="active"' : '' ?>>
                         <a href="<?= site_url('stock-review') ?>">
@@ -638,12 +655,12 @@ $seg2 = $this->uri->segment(2) ?? '';
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li <?= $seg1 == 'purchase-order' ? 'class="active"' : '' ?>>
+                    <li <?= $is_po_area ? 'class="active"' : '' ?>>
                         <a href="<?= site_url('purchase-order') ?>">
                             <i class="fa fa-file-text-o text-blue"></i> Purchase Order
                         </a>
                     </li>
-                    <li <?= ($seg1 == 'purchase-order' && $this->uri->segment(2) == 'receiving') ? 'class="active"' : '' ?>>
+                    <li <?= ($seg1 == 'purchase-order' && $is_penerimaan_area) ? 'class="active"' : '' ?>>
                         <a href="<?= site_url('purchase-order/receiving') ?>">
                             <i class="fa fa-inbox text-orange"></i> Penerimaan
                             <?php
@@ -656,7 +673,7 @@ $seg2 = $this->uri->segment(2) ?? '';
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li <?= ($seg1 == 'purchase-order' && $this->uri->segment(2) == 'history') ? 'class="active"' : '' ?>>
+                    <li <?= ($seg1 == 'purchase-order' && $is_history_area) ? 'class="active"' : '' ?>>
                         <a href="<?= site_url('purchase-order/history') ?>">
                             <i class="fa fa-history text-aqua"></i> Histori Penerimaan
                         </a>
@@ -668,7 +685,7 @@ $seg2 = $this->uri->segment(2) ?? '';
             <!-- FINANCE -->
             <?php if(in_array($level, [1,2,3])): ?>
             <li class="header">FINANCE</li>
-            <li class="treeview <?= in_array($seg1, ['coa','journal','ar-invoice','ar-payment','kontra-bon','kontra-bon-payment','report-ar','beban']) ? 'active menu-open' : '' ?>">
+            <li class="treeview <?= in_array($seg1, ['coa','journal','ar-invoice','ar-payment','kontra-bon','kontra-bon-payment','report-ar','ap-invoice','ap-payment','ap-kontra-bon','ap-kontra-bon-payment','report-ap','beban']) ? 'active menu-open' : '' ?>">
                 <a href="#">
                     <i class="fa fa-money text-green"></i>
                     <span>Finance</span>
@@ -677,40 +694,111 @@ $seg2 = $this->uri->segment(2) ?? '';
                     </span>
                 </a>
                 <ul class="treeview-menu">
-                    <li <?= $seg1 == 'ar-invoice' ? 'class="active"' : '' ?>>
-                        <a href="<?= site_url('ar-invoice') ?>">
-                            <i class="fa fa-file-text-o text-blue"></i> Piutang (AR)
+                    <li class="treeview <?= in_array($seg1, ['ar-invoice','ar-payment','kontra-bon','kontra-bon-payment','report-ar']) ? 'active menu-open' : '' ?>">
+                        <a href="#">
+                            <i class="fa fa-file-text-o text-blue"></i> Piutang
+                            <span class="pull-right-container">
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </span>
                         </a>
+                        <ul class="treeview-menu">
+                            <li <?= $seg1 == 'ar-invoice' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('ar-invoice') ?>">
+                                    <i class="fa fa-circle-o"></i> Piutang (AR)
+                                </a>
+                            </li>
+                            <li <?= $seg1 == 'kontra-bon' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('kontra-bon') ?>">
+                                    <i class="fa fa-circle-o"></i> Kontra Bon
+                                </a>
+                            </li>
+                            <li <?= $seg1 == 'report-ar' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('report-ar') ?>">
+                                    <i class="fa fa-circle-o"></i> Laporan Piutang
+                                </a>
+                            </li>
+                        </ul>
                     </li>
-                    <li <?= $seg1 == 'kontra-bon' ? 'class="active"' : '' ?>>
-                        <a href="<?= site_url('kontra-bon') ?>">
-                            <i class="fa fa-clone text-teal"></i> Kontra Bon
+                    <li class="treeview <?= in_array($seg1, ['ap-invoice','ap-payment','ap-kontra-bon','ap-kontra-bon-payment','report-ap']) ? 'active menu-open' : '' ?>">
+                        <a href="#">
+                            <i class="fa fa-file-text text-red"></i> Hutang
+                            <span class="pull-right-container">
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </span>
                         </a>
-                    </li>
-                    <li <?= $seg1 == 'report-ar' ? 'class="active"' : '' ?>>
-                        <a href="<?= site_url('report-ar') ?>">
-                            <i class="fa fa-line-chart text-aqua"></i> Laporan Piutang
-                        </a>
+                        <ul class="treeview-menu">
+                            <li <?= $seg1 == 'ap-invoice' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('ap-invoice') ?>">
+                                    <i class="fa fa-circle-o"></i> Hutang (AP)
+                                </a>
+                            </li>
+                            <li <?= $seg1 == 'ap-kontra-bon' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('ap-kontra-bon') ?>">
+                                    <i class="fa fa-circle-o"></i> Kontra Bon Hutang
+                                </a>
+                            </li>
+                            <li <?= $seg1 == 'report-ap' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('report-ap') ?>">
+                                    <i class="fa fa-circle-o"></i> Laporan Hutang
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <?php if(in_array($level, [1,2])): ?>
-                    <li <?= $seg1 == 'beban' ? 'class="active"' : '' ?>>
-                        <a href="<?= site_url('beban') ?>">
-                            <i class="fa fa-money text-red"></i> Beban Operasional
+                    <li class="treeview <?= in_array($seg1, ['beban','journal','coa']) ? 'active menu-open' : '' ?>">
+                        <a href="#">
+                            <i class="fa fa-briefcase text-yellow"></i> Operasional
+                            <span class="pull-right-container">
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </span>
                         </a>
-                    </li>
-                    <li <?= $seg1 == 'journal' ? 'class="active"' : '' ?>>
-                        <a href="<?= site_url('journal') ?>">
-                            <i class="fa fa-book text-orange"></i> Jurnal Umum
-                        </a>
+                        <ul class="treeview-menu">
+                            <li <?= $seg1 == 'beban' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('beban') ?>">
+                                    <i class="fa fa-circle-o"></i> Beban Operasional
+                                </a>
+                            </li>
+                            <li <?= $seg1 == 'journal' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('journal') ?>">
+                                    <i class="fa fa-circle-o"></i> Jurnal Umum
+                                </a>
+                            </li>
+                            <?php if($level == 1): ?>
+                            <li <?= $seg1 == 'coa' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('coa') ?>">
+                                    <i class="fa fa-circle-o"></i> Chart of Accounts
+                                </a>
+                            </li>
+                            <?php endif; ?>
+                        </ul>
                     </li>
                     <?php endif; ?>
-                    <?php if($level == 1): ?>
-                    <li <?= $seg1 == 'coa' ? 'class="active"' : '' ?>>
-                        <a href="<?= site_url('coa') ?>">
-                            <i class="fa fa-sitemap text-purple"></i> Chart of Accounts
+                </ul>
+            </li>
+            <?php endif; ?>
+
+            <!-- SDM -->
+            <?php if(in_array($level, [1,2])): ?>
+            <li class="header">SDM</li>
+            <li class="treeview <?= in_array($seg1, ['karyawan','absensi']) ? 'active menu-open' : '' ?>">
+                <a href="#">
+                    <i class="fa fa-users text-blue"></i>
+                    <span>Karyawan</span>
+                    <span class="pull-right-container">
+                        <i class="fa fa-angle-left pull-right"></i>
+                    </span>
+                </a>
+                <ul class="treeview-menu">
+                    <li <?= $seg1 == 'karyawan' ? 'class="active"' : '' ?>>
+                        <a href="<?= site_url('karyawan') ?>">
+                            <i class="fa fa-user text-blue"></i> Data Karyawan
                         </a>
                     </li>
-                    <?php endif; ?>
+                    <li <?= $seg1 == 'absensi' ? 'class="active"' : '' ?>>
+                        <a href="<?= site_url('absensi') ?>">
+                            <i class="fa fa-check-square-o text-green"></i> Absensi & Uang Makan
+                        </a>
+                    </li>
                 </ul>
             </li>
             <?php endif; ?>
@@ -873,6 +961,14 @@ if(flash) {
     text : flash
   })
 }
+var flashError = $('#flash').data('flash-error');
+if(flashError) {
+  Swal.fire({
+    icon : 'error',
+    title: 'Gagal',
+    text : flashError
+  })
+}
 
 $(document).on('click',  '#btn-hapus', function(e) {
   e.preventDefault();
@@ -887,7 +983,10 @@ $(document).on('click',  '#btn-hapus', function(e) {
     confirmButtonText: "Ya, Hapus"
   }).then((result) => {
     if (result.isConfirmed) {
-        window.location = link;
+        var $form = $('<form>', {method: 'POST', action: link});
+        $form.append($('<input>', {type: 'hidden', name: 'csrf_token', value: $('meta[name="csrf-token"]').attr('content')}));
+        $('body').append($form);
+        $form.submit();
     }
   });
 
@@ -1123,9 +1222,17 @@ $(document).on('click',  '#btn-logout', function(e) {
 (function() {
   var SS_KEY = 'jdm_notif_shown';
 
-  function getShown()  { try { return JSON.parse(sessionStorage.getItem(SS_KEY)||'[]'); } catch(e){ return []; } }
-  function addShown(id){ var ids=getShown(); ids.push(id); sessionStorage.setItem(SS_KEY,JSON.stringify(ids)); }
-  function clearShown(){ sessionStorage.removeItem(SS_KEY); }
+  // localStorage (bukan sessionStorage) supaya status "sudah ditampilkan" dishare
+  // antar tab/window pada origin yang sama — tab baru tidak akan menganggap semua
+  // notifikasi unread sebagai baru dan menampilkannya sekaligus sebagai toast.
+  function getShown()  { try { return JSON.parse(localStorage.getItem(SS_KEY)||'[]'); } catch(e){ return []; } }
+  function addShown(id){
+    var ids=getShown();
+    ids.push(id);
+    if (ids.length > 200) ids = ids.slice(ids.length - 200); // cegah localStorage membengkak
+    localStorage.setItem(SS_KEY,JSON.stringify(ids));
+  }
+  function clearShown(){ localStorage.removeItem(SS_KEY); }
 
   var emptyHtml =
     '<li id="notif-empty"><a href="#"><i class="fa fa-check-circle" style="font-size:22px;display:block;margin-bottom:6px;color:#10b981"></i>Tidak ada notifikasi baru</a></li>';

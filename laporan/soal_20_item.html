@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Daftar 20 Item Contoh — 28 Mei - 19 Juni 2026</title>
+<style>
+  :root {
+    --bg: #eef1f0;
+    --card: #ffffff;
+    --border: #dde3e1;
+    --text: #1c2624;
+    --muted: #62766f;
+    --accent: #0f6e5c;
+    --accent-soft: #e2f1ec;
+    --flag-bg: #fff6e6;
+    --flag-border: #f0cd8f;
+    --ms-text: #8a5200;
+    --ms-dot: #c97a00;
+    --shadow: 0 1px 2px rgba(20, 40, 34, 0.06);
+  }
+  :root[data-theme="dark"] {
+    --bg: #10201c; --card: #15332b; --border: #24443b; --text: #e3f0ea; --muted: #8bab9f;
+    --accent: #3ecfa8; --accent-soft: #1b3a32; --flag-bg: #3a2c12; --flag-border: #6e521f;
+    --ms-text: #ffcf7a; --ms-dot: #ffb84d; --shadow: 0 1px 3px rgba(0,0,0,0.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10201c; --card: #15332b; --border: #24443b; --text: #e3f0ea; --muted: #8bab9f;
+      --accent: #3ecfa8; --accent-soft: #1b3a32; --flag-bg: #3a2c12; --flag-border: #6e521f;
+      --ms-text: #ffcf7a; --ms-dot: #ffb84d; --shadow: 0 1px 3px rgba(0,0,0,0.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body {
+    font-family: "Segoe UI", -apple-system, Roboto, Arial, sans-serif;
+    background: var(--bg); color: var(--text); margin: 0; padding: 28px 24px 48px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .eyebrow {
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 6px;
+  }
+  h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; text-wrap: balance; }
+  h1 .periode { color: var(--muted); font-weight: 500; font-size: 15px; }
+  .subtitle { color: var(--muted); font-size: 13.5px; margin-bottom: 22px; max-width: 68ch; line-height: 1.5; }
+  .stat-row { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .stat .num { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); line-height: 1.1; }
+  .stat .num.accent { color: var(--accent); }
+  .stat .num.ms { color: var(--ms-text); }
+  .stat .label { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; }
+  .legend {
+    display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted);
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; margin-bottom: 14px;
+  }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ms-dot); display: inline-block; flex: none; }
+  input.filter-input {
+    width: 100%; padding: 10px 14px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+    border-radius: 8px; font-size: 13.5px; margin-bottom: 14px;
+  }
+  input.filter-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input.filter-input::placeholder { color: var(--muted); }
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .table-scroll { overflow-x: auto; max-height: 78vh; }
+  table.po-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.po-table thead th {
+    position: sticky; top: 0; background: var(--accent-soft); color: var(--text); text-align: left; padding: 10px 12px;
+    border-bottom: 2px solid var(--border); white-space: nowrap; font-weight: 600; font-size: 11.5px;
+    letter-spacing: 0.03em; text-transform: uppercase; z-index: 1;
+  }
+  table.po-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.po-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.po-table td.nowrap { white-space: nowrap; }
+  table.po-table td.barcode {
+    white-space: nowrap; font-family: "Consolas", "Courier New", monospace;
+    font-variant-numeric: tabular-nums; color: var(--muted);
+  }
+  table.po-table td.item-name { max-width: 400px; }
+  table.po-table tbody tr:hover { background: var(--accent-soft); }
+  table.po-table tbody tr.flagged { background: var(--flag-bg); }
+  table.po-table tbody tr.flagged:hover { filter: brightness(0.98); }
+  .muted { color: var(--muted); }
+  .chip-cell { white-space: normal; min-width: 180px; }
+  .chip {
+    display: inline-block; padding: 2px 8px; margin: 1px 3px 1px 0; border-radius: 999px; font-size: 10.5px;
+    font-weight: 700; letter-spacing: 0.01em; color: var(--muted); background: transparent;
+    border: 1px solid var(--border); white-space: nowrap; cursor: help;
+  }
+  .chip-ordered { color: var(--ms-text); background: var(--flag-bg); border-color: var(--flag-border); }
+  .chip-lg { font-size: 11.5px; padding: 2px 9px; }
+  .chip-sep { color: var(--muted); font-weight: 400; margin-right: 3px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 24px; }
+  @media (max-width: 720px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head><body><div class="wrap">
+  <div class="eyebrow">Rekap Pengadaan &middot; Data Live dari Database</div>
+  <h1>Daftar 20 Item Contoh <span class="periode">&middot; 28 Mei &ndash; 19 Juni &middot; 28 Mei - 19 Juni 2026</span></h1>
+  <div class="subtitle">
+    Daftar kebutuhan pengadaan periode 28 Mei &ndash; 19 Juni (status <code>cancelled</code> dikecualikan, item bernama "Edit" dikeluarkan).
+    Kolom <b>Supplier Dipesan</b> = supplier yang benar-benar dipakai;
+    kolom <b>Supplier Tersedia</b> = semua supplier yang tercatat bisa memasok barang itu (dari <code>supplier_barang</code>),
+    dengan yang dipesan tetap ditandai warna dan dipisah koma jika lebih dari satu.
+  </div>
+
+  <div class="stat-row">
+    <div class="stat"><div class="num accent">20</div><div class="label">Jumlah PO</div></div>
+    <div class="stat"><div class="num">20</div><div class="label">Baris Item Dipesan</div></div>
+    <div class="stat"><div class="num">68</div><div class="label">Total Qty Order</div></div>
+    <div class="stat"><div class="num ms">5 <span style="font-size:13px;font-weight:600;">(25%)</span></div><div class="label">Item Multi-Supplier</div></div>
+  </div>
+
+  <div class="legend"><span class="dot"></span> Baris disorot oranye = item punya lebih dari satu supplier tersedia (arahkan kursor ke tiap chip untuk nama lengkap supplier)</div>
+
+  <input type="text" class="filter-input" id="filterInput" placeholder="Cari barcode / nama item / supplier / no PO...">
+
+  <div class="table-card">
+    <div class="table-scroll">
+      <table class="po-table" id="poTable">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Barcode</th>
+            <th>Item</th>
+            <th>Supplier Dipesan</th>
+            <th class="num">Qty Order</th>
+            <th>Supplier Tersedia</th>
+          </tr>
+        </thead>
+        <tbody>
+<tr class=""><td class="num muted">1</td><td class="barcode">02514</td><td class="item-name">Karet Stabil RR Avanza/Xenia &#039;G&#039; 90385/90386-20001</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">10</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">2</td><td class="barcode">01994</td><td class="item-name">E/Mounting RR Jazz Old AT/MT &#039;B&#039; 50810-SEL-T01</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">3</td><td class="barcode">02387</td><td class="item-name">Support Shock FR Altis Old 00-07 Bensco 48609-12420</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BJ</span> <span class="muted">(BERKAT JAYA)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BJ (BERKAT JAYA) — supplier yang dipesan">BJ</span></td></tr>
+<tr class=""><td class="num muted">4</td><td class="barcode">11726</td><td class="item-name">Karet Stabil FR Calya/Agya &#039;G&#039; 48815-BZ240</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">4</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class="flagged"><td class="num muted">5</td><td class="barcode">04743</td><td class="item-name">Thermostat Innova Bensin/Vios/Altis &#039;G&#039; 90916-03093</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span><span class="chip-sep">,</span> <span class="chip" title="ECP (Eito Cahaya Perdana)">ECP</span></td></tr>
+<tr class=""><td class="num muted">6</td><td class="barcode">03071</td><td class="item-name">Bearing F/W ABS Swift Koyo DAC4072W-15CS74</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">7</td><td class="barcode">09338</td><td class="item-name">Bearing R/W Xtrail T30 Unifar AU0826-111</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">8</td><td class="barcode">15435</td><td class="item-name">Shockbreker FR Avanza Grand New/Xenia 22-Up &#039;G&#039; (DHS) 48510-BZE50 / 48520-BZA80</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span></td></tr>
+<tr class="flagged"><td class="num muted">9</td><td class="barcode">13802</td><td class="item-name">ISC Grandmax/Luxio/Agya/Ayla &#039;G&#039; 9004B-82002-001</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">1</td><td class="chip-cell"><span class="chip" title="ECP (Eito Cahaya Perdana)">ECP</span><span class="chip-sep">,</span> <span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span></td></tr>
+<tr class=""><td class="num muted">10</td><td class="barcode">07262</td><td class="item-name">Sensor O2 Grandmax &#039;B&#039; 89465-BZ080</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class="flagged"><td class="num muted">11</td><td class="barcode">11623</td><td class="item-name">Selang Bypass Long Avanza/Xenia/Rush/Terios &#039;G&#039; 16261-BZ030</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">5</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span><span class="chip-sep">,</span> <span class="chip" title="ECP (Eito Cahaya Perdana)">ECP</span></td></tr>
+<tr class="flagged"><td class="num muted">12</td><td class="barcode">11804</td><td class="item-name">Selang Bypass Avanza/Xenia/Rush/Terios &#039;G&#039; 16261-BZ020</td><td class="nowrap"><span class="chip chip-ordered chip-lg">ECP</span> <span class="muted">(Eito Cahaya Perdana)</span></td><td class="num">5</td><td class="chip-cell"><span class="chip" title="ASC (ASCO)">ASC</span><span class="chip-sep">,</span> <span class="chip chip-ordered" title="ECP (Eito Cahaya Perdana) — supplier yang dipesan">ECP</span></td></tr>
+<tr class=""><td class="num muted">13</td><td class="barcode">01646</td><td class="item-name">E/Mounting R/L Innova/Fortuner/Hilux Bensin &#039;G&#039; 12305-0C011</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">14</td><td class="barcode">02155</td><td class="item-name">Support Shock FR Altis Old 00-07 Fabber TSM-005 (48609-12420)</td><td class="nowrap"><span class="chip chip-ordered chip-lg">BHS</span> <span class="muted">(Birkens)</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="BHS (Birkens) — supplier yang dipesan">BHS</span></td></tr>
+<tr class=""><td class="num muted">15</td><td class="barcode">15117</td><td class="item-name">Karet Stabil RR Avanza/Xenia &#039;G&#039; 90385/90386-20001</td><td class="nowrap"><span class="chip chip-ordered chip-lg">TRN</span> <span class="muted">(Tarno Irian)</span></td><td class="num">5</td><td class="chip-cell"><span class="chip chip-ordered" title="TRN (Tarno Irian) — supplier yang dipesan">TRN</span></td></tr>
+<tr class="flagged"><td class="num muted">16</td><td class="barcode">09252</td><td class="item-name">Selang Rdt LOW Grandmax &#039;G&#039; 16571-BZ180</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span><span class="chip-sep">,</span> <span class="chip" title="ECP (Eito Cahaya Perdana)">ECP</span></td></tr>
+<tr class=""><td class="num muted">17</td><td class="barcode">12077</td><td class="item-name">Bearing F/W Freed/City/New Civic Unifar DAC4379W-1CS57</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">3</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+<tr class=""><td class="num muted">18</td><td class="barcode">03070</td><td class="item-name">Tabung Radiator Kijang 5K/7K &#039;G&#039; 16470-06010</td><td class="nowrap"><span class="chip chip-ordered chip-lg">AD</span> <span class="muted">(Kang Ade )</span></td><td class="num">5</td><td class="chip-cell"><span class="chip chip-ordered" title="AD (Kang Ade ) — supplier yang dipesan">AD</span></td></tr>
+<tr class=""><td class="num muted">19</td><td class="barcode">11415</td><td class="item-name">Paking Head Klingrit Grandmax &#039;B&#039; 11115-B0020</td><td class="nowrap"><span class="chip chip-ordered chip-lg">PN</span> <span class="muted">(Pandu)</span></td><td class="num">5</td><td class="chip-cell"><span class="chip chip-ordered" title="PN (Pandu) — supplier yang dipesan">PN</span></td></tr>
+<tr class=""><td class="num muted">20</td><td class="barcode">05612</td><td class="item-name">Bearing F/W Hiace Commuter 14-18 (LH212) Unifar 54KWH02</td><td class="nowrap"><span class="chip chip-ordered chip-lg">Unfr</span> <span class="muted">(Unifar )</span></td><td class="num">2</td><td class="chip-cell"><span class="chip chip-ordered" title="Unfr (Unifar ) — supplier yang dipesan">Unfr</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Dihasilkan otomatis dari database &mdash; hanya laporan baca, tidak ada perubahan ke sistem. (Daftar 20 Item Contoh dari 1 daftar kebutuhan bulan ini)</footer>
+</div>
+
+<script>
+(function () {
+  var input = document.getElementById('filterInput');
+  var table = document.getElementById('poTable');
+  var rows = table.querySelectorAll('tbody tr');
+  input.addEventListener('input', function () {
+    var q = input.value.toLowerCase();
+    rows.forEach(function (tr) {
+      tr.style.display = tr.textContent.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+    });
+  });
+})();
+</script>
+</body>
+</html>

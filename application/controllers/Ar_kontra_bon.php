@@ -110,9 +110,15 @@ class Ar_kontra_bon extends CI_Controller {
         $kb = $this->Ar_kontra_bon_m->get($id);
         if (!$kb) show_404();
 
+        $invoices = $this->Ar_kontra_bon_m->get_invoices($id);
+        $subtotal_brutto = array_sum(array_map(function ($inv) {
+            return $inv->gross_amount ?: $inv->amount;
+        }, $invoices));
+
         $data = [
-            'kb'       => $kb,
-            'invoices' => $this->Ar_kontra_bon_m->get_invoices($id),
+            'kb'               => $kb,
+            'invoices'         => $invoices,
+            'subtotal_brutto'  => $subtotal_brutto,
         ];
 
         $html = $this->load->view('finance/ar_kontra_bon/ar_kontra_bon_print', $data, true);

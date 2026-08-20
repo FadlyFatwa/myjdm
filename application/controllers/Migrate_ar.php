@@ -13,7 +13,7 @@ class Migrate_ar extends CI_Controller {
     {
         parent::__construct();
         check_not_login();
-        check_allowed_levels([1]);
+        check_allowed_levels([1, 2]);
         $this->load->model('Ar_invoice_m');
         $this->load->library('fungsi');
     }
@@ -36,6 +36,7 @@ class Migrate_ar extends CI_Controller {
             ->where('t_sale.date >=', $from)
             ->where('t_sale.date <=', $to)
             ->where('t_sale.payment_status', 'belum lunas')
+            ->where('t_sale.is_cancelled', 0)
             ->where('t_sale.customer_id IS NOT NULL', null, false)
             ->get()->result();
 

@@ -1552,7 +1552,12 @@ $(document).ready(function () {
     setInterval(function () {
         idleTime++;
         if (idleTime >= idleLimit) {
-            location.reload(); // refresh halaman
+            idleTime = 0;
+            // Refresh cart saja, field lain (customer, catatan, metode bayar, dll) tidak ikut ter-reset
+            $('#cart_table').load('<?=site_url('sale/cart_data')?>', function(){
+                calculate();
+                $('#barcode').focus();
+            });
         }
     }, 1000); // setiap 1 detik
 

@@ -64,6 +64,17 @@ class Ar_payment_m extends CI_Model {
 
         $this->db->trans_start();
 
+        // Kunci baris invoice supaya dua pembayaran bersamaan tidak sama-sama lolos cek saldo di atas
+        $locked = $this->db->query(
+            "SELECT outstanding_amount, status FROM ar_invoice WHERE ar_invoice_id = ? FOR UPDATE",
+            [$post['ar_invoice_id']]
+        )->row();
+
+        if (!$locked || !in_array($locked->status, ['outstanding', 'partial']) || $amount > $locked->outstanding_amount) {
+            $this->db->trans_rollback();
+            throw new Exception('Jumlah pembayaran melebihi sisa piutang atau invoice sudah tidak aktif.');
+        }
+
         $payment_no = $this->payment_no();
 
         $kas_akun = $post['payment_method'] === 'cash'

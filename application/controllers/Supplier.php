@@ -23,7 +23,8 @@ class Supplier extends CI_Controller {
 		$supplier->phone = null;
 		$supplier->alamat = null;
 		$supplier->keterangan = null;
-		
+		$supplier->payment_term_days = 0;
+
 		$data = array(
 			'page' => 'add',
 			'row' => $supplier
@@ -54,10 +55,13 @@ class Supplier extends CI_Controller {
 		$this->form_validation->set_rules('telp',          'No. Telepon',   'trim|max_length[20]');
 		$this->form_validation->set_rules('alamat',        'Alamat',        'trim|max_length[255]');
 		$this->form_validation->set_rules('keterangan',    'Keterangan',    'trim|max_length[255]');
+		$this->form_validation->set_rules('payment_term_days', 'Termin Pembayaran', 'trim|numeric|greater_than_equal_to[0]');
 
 		$this->form_validation->set_message('required',   '%s wajib diisi');
 		$this->form_validation->set_message('min_length', '%s minimal 2 karakter');
 		$this->form_validation->set_message('max_length', '%s terlalu panjang');
+		$this->form_validation->set_message('numeric',    '%s harus berupa angka');
+		$this->form_validation->set_message('greater_than_equal_to', '%s tidak boleh negatif');
 
 		if ($this->form_validation->run() === FALSE) {
 			$this->session->set_flashdata('error', strip_tags(validation_errors()));
@@ -79,6 +83,7 @@ class Supplier extends CI_Controller {
 
 	public function del($id)
 	{
+		if ($this->input->method() !== 'post') show_404();
 		$this->supplier_m->del($id);
 		if($this->db->affected_rows() > 0){
 			$this->session->set_flashdata('success','Data Supplier berhasil dihapus');

@@ -9,7 +9,7 @@
 </section>
 
 <section class="content">
-    <div id="flash" data-flash="<?=$this->session->flashdata('success');?>"></div>
+    <div id="flash" data-flash="<?=$this->session->flashdata('success');?>" data-flash-error="<?=$this->session->flashdata('error');?>"></div>
 
     <div class="box box-primary">
         <div class="box-header with-border">
@@ -107,7 +107,7 @@
                 </thead>
                 <tbody>
                 <?php foreach($row->result() as $data) : ?>
-                    <tr>
+                    <tr<?= !empty($data->is_cancelled) ? ' style="opacity:.55"' : '' ?>>
                         <td class="text-center"></td>
                         <td><?=$data->invoice?></td>
                         <td><?=indo_date($data->date)?></td>
@@ -132,7 +132,13 @@
                             <span class="label label-<?= $mc ?>"><?= strtoupper($m) ?></span>
                         </td>
                         <td class="text-center">
-                            <?php $lunas = $data->payment_status === 'lunas'; ?>
+                            <?php if (!empty($data->is_cancelled)): ?>
+                            <span style="display:inline-block; padding:4px 10px; border-radius:12px;
+                                         font-size:11px; font-weight:700; background:#6b7280; color:#fff"
+                                  title="<?= $data->cancel_reason ? htmlspecialchars($data->cancel_reason) : 'Transaksi dibatalkan' ?>">
+                                <i class="fa fa-ban"></i> Dibatalkan
+                            </span>
+                            <?php else: $lunas = $data->payment_status === 'lunas'; ?>
                             <span class="badge-status"
                                   data-id="<?= $data->sale_id ?>"
                                   data-status="<?= $data->payment_status ?>"
@@ -144,6 +150,7 @@
                                 <i class="fa fa-<?= $lunas ? 'check' : 'clock-o' ?>"></i>
                                 <?= $lunas ? 'Lunas' : 'Belum Lunas' ?>
                             </span>
+                            <?php endif; ?>
                         </td>
                         <td class="text-center">
                             <div class="btn-group">
@@ -157,12 +164,26 @@
                                         </a>
                                     </li>
                                     <li><a href="<?=site_url('sale/preview/'.$data->sale_id)?>?from=report"><i class="fa fa-print"></i> Print</a></li>
+                                    <?php if (empty($data->is_cancelled)): ?>
                                     <li><a href="<?=site_url('retur/add/'.$data->sale_id)?>"><i class="fa fa-undo"></i> Retur</a></li>
-                                    
+                                    <?php endif; ?>
+
                                     <?php if(in_array($this->fungsi->user_login()->level, ['1','2'])) { ?>
                                         <li class="divider"></li>
+                                        <?php if (empty($data->is_cancelled)): ?>
                                         <li><a href="<?=site_url('sale/edit/'.$data->sale_id)?>"><i class="fa fa-edit"></i> Edit</a></li>
-                                        <li><a href="<?=site_url('sale/del/'.$data->sale_id)?>" onclick="return confirm('Yakin hapus?')" class="text-red"><i class="fa fa-trash"></i> Hapus</a></li>
+                                        <li>
+                                            <a href="<?=site_url('sale/del/'.$data->sale_id)?>" class="btn-cancel-sale text-red">
+                                                <i class="fa fa-ban"></i> Batalkan Transaksi
+                                            </a>
+                                        </li>
+                                        <?php else: ?>
+                                        <li>
+                                            <a href="<?=site_url('sale/reactivate/'.$data->sale_id)?>" class="btn-reactivate-sale" style="color:#00a65a">
+                                                <i class="fa fa-undo"></i> Aktifkan Kembali
+                                            </a>
+                                        </li>
+                                        <?php endif; ?>
                                     <?php } ?>
                                 </ul>
                             </div>
@@ -208,6 +229,26 @@ $(document).ready(function() {
         });
     }).draw();
 
+    // Dropdown "Aksi" — buka ke atas otomatis kalau ruang di bawah tidak cukup,
+    // supaya baris paling bawah tidak perlu di-scroll untuk lihat semua opsi
+    $(document).on('show.bs.dropdown', '.btn-group', function () {
+        var $group  = $(this);
+        var $toggle = $group.find('[data-toggle="dropdown"]');
+        var $menu   = $group.find('.dropdown-menu');
+
+        $group.removeClass('dropup');
+
+        $menu.css('display', 'block');
+        var menuHeight = $menu.outerHeight();
+        $menu.css('display', '');
+
+        var spaceBelow = window.innerHeight - $toggle.get(0).getBoundingClientRect().bottom;
+
+        if (spaceBelow < menuHeight + 10) {
+            $group.addClass('dropup');
+        }
+    });
+
     // Klik badge status → toggle lunas/belum lunas
     $(document).on('click', '.badge-status', function() {
         var $badge    = $(this);
@@ -247,9 +288,53 @@ $(document).ready(function() {
                         title: 'Status diperbarui', showConfirmButton: false, timer: 2000
                     });
                 } else {
-                    Swal.fire({ icon: 'error', title: 'Gagal mengubah status' });
+                    Swal.fire({ icon: 'error', title: 'Gagal mengubah status', text: res.message || '' });
                 }
             }, 'json');
+        });
+    });
+
+    // Batalkan transaksi — stok dikembalikan, piutang terkait (kalau ada) di-void
+    $(document).on('click', '.btn-cancel-sale', function(e) {
+        e.preventDefault();
+        var link = $(this).attr('href');
+
+        Swal.fire({
+            title: 'Batalkan transaksi ini?',
+            html : 'Stok barang akan <b>dikembalikan</b>.<br>Kalau transaksi ini punya piutang yang belum dibayar, piutangnya juga otomatis di-void.<br>Tindakan ini tidak bisa dibatalkan.',
+            icon : 'warning',
+            showCancelButton  : true,
+            confirmButtonText : 'Ya, batalkan',
+            cancelButtonText  : 'Tidak',
+            confirmButtonColor: '#dd4b39',
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            var $form = $('<form>', {method: 'POST', action: link});
+            $form.append($('<input>', {type: 'hidden', name: 'csrf_token', value: $('meta[name="csrf-token"]').attr('content')}));
+            $('body').append($form);
+            $form.submit();
+        });
+    });
+
+    // Aktifkan kembali transaksi yang sudah dibatalkan
+    $(document).on('click', '.btn-reactivate-sale', function(e) {
+        e.preventDefault();
+        var link = $(this).attr('href');
+
+        Swal.fire({
+            title: 'Aktifkan kembali transaksi ini?',
+            html : 'Stok barang akan <b>dikurangi lagi</b> sesuai isi transaksi.<br>Kalau transaksi ini punya piutang yang sempat di-void otomatis, piutangnya juga akan diaktifkan kembali.',
+            icon : 'question',
+            showCancelButton  : true,
+            confirmButtonText : 'Ya, aktifkan',
+            cancelButtonText  : 'Tidak',
+            confirmButtonColor: '#00a65a',
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            var $form = $('<form>', {method: 'POST', action: link});
+            $form.append($('<input>', {type: 'hidden', name: 'csrf_token', value: $('meta[name="csrf-token"]').attr('content')}));
+            $('body').append($form);
+            $form.submit();
         });
     });
 

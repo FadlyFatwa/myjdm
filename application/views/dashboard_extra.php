@@ -111,6 +111,23 @@
     </div>
 </div>
 
+<!-- Row 3.5: Top 5 Pelanggan Bulan Ini -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="box box-success">
+            <div class="box-header with-border">
+                <h3 class="box-title"><i class="fa fa-star"></i> Top 5 Pelanggan Bulan Ini</h3>
+                <div class="box-tools pull-right">
+                    <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                </div>
+            </div>
+            <div class="box-body" id="top-customers-body" style="min-height:90px">
+                <div class="text-center text-muted" style="padding:20px 0"><i class="fa fa-spinner fa-spin"></i> Memuat...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Row 4: Transaksi Terbaru + PO Aktif -->
 <div class="row">
     <div class="col-md-7">
@@ -218,6 +235,30 @@ $(function () {
             html += '</ol>';
         }
         $('#top-items-body').html(html);
+    });
+
+    // Top 5 pelanggan (belanja terbanyak) bulan ini
+    $.getJSON('<?= site_url('dashboard/get_top_customers_json') ?>', function (res) {
+        var html = '';
+        if (!res.length) {
+            html = '<p class="text-muted text-center" style="padding:10px 0">Belum ada transaksi customer terdaftar bulan ini.</p>';
+        } else {
+            var medals = ['#f39c12','#95a5a6','#cd7f32','#3c8dbc','#3c8dbc'];
+            html = '<div style="display:flex;gap:12px;flex-wrap:wrap">';
+            res.forEach(function (r, i) {
+                html += '<div style="flex:1;min-width:170px;padding:12px;border:1px solid #f4f4f4;border-radius:6px;text-align:center">'
+                      + '<div style="width:30px;height:30px;border-radius:50%;background:' + medals[i] + ';color:#fff;'
+                      + 'display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-weight:700;font-size:13px">'
+                      + (i + 1) + '</div>'
+                      + '<div style="font-size:13px;font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+                      + r.nama_customer + '</div>'
+                      + '<div style="font-size:14px;color:#00a65a;font-weight:700">' + fmtRp(r.total_belanja) + '</div>'
+                      + '<div style="font-size:11px;color:#888">' + r.total_transaksi + ' transaksi</div>'
+                      + '</div>';
+            });
+            html += '</div>';
+        }
+        $('#top-customers-body').html(html);
     });
 
     // Transaksi terbaru

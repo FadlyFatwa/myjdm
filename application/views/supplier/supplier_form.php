@@ -41,6 +41,10 @@
                         <input type="text" name="keterangan" value="<?=$row->keterangan?>" class="form-control" required>
                     </div>
                     <div class="form-group">
+                        <label>Termin Pembayaran (hari)</label>
+                        <input type="number" name="payment_term_days" value="<?=$row->payment_term_days?>" class="form-control" min="0">
+                    </div>
+                    <div class="form-group">
                         <button type="submit" name="<?=$page?>" class="btn btn-success btn-flat">
                             <i class="fa fa-paper-plane"></i> Save
                         </button>

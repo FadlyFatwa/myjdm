@@ -12,6 +12,7 @@ class Report_tax extends CI_Controller {
     {
         parent::__construct();
         check_not_login();
+        check_allowed_levels([1]);
         $this->load->model('Report_tax_m');
     }
 
@@ -165,6 +166,10 @@ class Report_tax extends CI_Controller {
 
     public function export_excel($period)
 {
+    if (!preg_match('/^\d{4}-\d{2}$/', $period)) {
+        show_error('Format periode tidak valid.');
+    }
+
     $rows = $this->Report_tax_m->get_tax_by_period($period);
 
     if (!$rows) {

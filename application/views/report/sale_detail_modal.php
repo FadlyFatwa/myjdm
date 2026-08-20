@@ -29,26 +29,6 @@
             <th class="bg-gray-light">Catatan</th>
             <td><?= $sale->note ? htmlspecialchars($sale->note) : '<span class="text-muted">—</span>' ?></td>
         </tr>
-        <tr>
-            <th class="bg-gray-light">Subtotal</th>
-            <td>Rp <?= number_format($sale->total_price, 0, ',', '.') ?></td>
-            <th class="bg-gray-light">Diskon Global</th>
-            <td><?= $sale->discount ?>%</td>
-        </tr>
-        <?php if ($sale->payment_method === 'cash'): ?>
-        <tr>
-            <th class="bg-gray-light">Cash</th>
-            <td>Rp <?= number_format($sale->cash, 0, ',', '.') ?></td>
-            <th class="bg-gray-light">Kembalian</th>
-            <td>Rp <?= number_format($sale->change, 0, ',', '.') ?></td>
-        </tr>
-        <?php endif; ?>
-        <tr>
-            <th class="bg-gray-light text-primary">Grand Total</th>
-            <td colspan="3"><strong class="text-primary" style="font-size:16px;">
-                Rp <?= number_format($sale->final_price, 0, ',', '.') ?>
-            </strong></td>
-        </tr>
     </tbody>
 </table>
 
@@ -88,7 +68,7 @@
         </tr>
     </tfoot>
 </table>
-<?php endif; ?>
+<?php else: $sum_barang = 0; endif; ?>
 
 <!-- ── Detail Jasa ───────────────────────────────────── -->
 <?php if (!empty($jasa)): ?>
@@ -122,11 +102,40 @@
         </tr>
     </tfoot>
 </table>
-<?php endif; ?>
+<?php else: $sum_jasa = 0; endif; ?>
 
 <?php if (empty($products) && empty($jasa)): ?>
     <div class="alert alert-warning">Tidak ada detail item untuk transaksi ini.</div>
 <?php endif; ?>
+
+<!-- ── Ringkasan Total ───────────────────────────────── -->
+<table class="table table-bordered" style="margin-top:14px;">
+    <tbody>
+        <tr>
+            <th width="22%" class="bg-gray-light">Subtotal Barang</th>
+            <td width="28%">Rp <?= number_format($sum_barang, 0, ',', '.') ?></td>
+            <th width="22%" class="bg-gray-light">Subtotal Jasa</th>
+            <td>Rp <?= number_format($sum_jasa, 0, ',', '.') ?></td>
+        </tr>
+        <tr>
+            <th class="bg-gray-light">Diskon Global</th>
+            <td><?= $sale->discount ?>%</td>
+            <?php if ($sale->payment_method === 'cash'): ?>
+            <th class="bg-gray-light">Cash / Kembalian</th>
+            <td>Rp <?= number_format($sale->cash, 0, ',', '.') ?> / Rp <?= number_format($sale->change, 0, ',', '.') ?></td>
+            <?php else: ?>
+            <th class="bg-gray-light"></th>
+            <td></td>
+            <?php endif; ?>
+        </tr>
+        <tr>
+            <th class="bg-gray-light text-primary">Grand Total</th>
+            <td colspan="3"><strong class="text-primary" style="font-size:16px;">
+                Rp <?= number_format($sale->final_price, 0, ',', '.') ?>
+            </strong></td>
+        </tr>
+    </tbody>
+</table>
 
 <?php else: ?>
     <div class="alert alert-danger">Data tidak ditemukan.</div>

@@ -464,7 +464,13 @@ $(function () {
         Swal.fire({ title:'Hapus item ini dari keranjang?', icon:'warning',
             showCancelButton:true, confirmButtonText:'Ya, hapus', cancelButtonText:'Batal',
             confirmButtonColor:'#dd4b39'
-        }).then(function(r){ if(r.isConfirmed) window.location.href = href; });
+        }).then(function(r){
+            if (!r.isConfirmed) return;
+            var $form = $('<form>', {method: 'POST', action: href});
+            $form.append($('<input>', {type: 'hidden', name: 'csrf_token', value: $('meta[name="csrf-token"]').attr('content')}));
+            $('body').append($form);
+            $form.submit();
+        });
     });
 
     // ── Kosongkan supplier ───────────────────────────────────────

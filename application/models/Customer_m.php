@@ -20,6 +20,7 @@ class Customer_m extends CI_Model {
             'alamat' => $post['alamat'],
             'credit_limit' => $post['credit_limit'] ?? 0,
             'payment_term_days' => $post['payment_term_days'] ?? 0,
+            'gross_discount_percent' => $post['gross_discount_percent'] ?: null,
         ];
         $this->db->insert('customer',$params);
     }
@@ -32,6 +33,7 @@ class Customer_m extends CI_Model {
             'alamat' => $post['alamat'],
             'credit_limit' => $post['credit_limit'] ?? 0,
             'payment_term_days' => $post['payment_term_days'] ?? 0,
+            'gross_discount_percent' => $post['gross_discount_percent'] ?: null,
         ];
         $this->db->where('customer_id',$post['id']);
         $this->db->update('customer',$params);

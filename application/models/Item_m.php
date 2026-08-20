@@ -366,17 +366,15 @@ class item_m extends CI_Model {
 
 
     function update_stock_in($data){
-        $qty = $data['qty'];
-        $id = $data['item_id'];
-        $sql = "UPDATE p_item SET stock = stock + '$qty' WHERE item_id = '$id'";
-        $this->db->query($sql);
+        $qty = (int) $data['qty'];
+        $id = (int) $data['item_id'];
+        $this->db->query("UPDATE p_item SET stock = stock + ? WHERE item_id = ?", [$qty, $id]);
     }
 
     function update_stock_out($data){
-        $qty = $data['qty'];
-        $id = $data['item_id'];
-        $sql = "UPDATE p_item SET stock = stock - '$qty' WHERE item_id = '$id'";
-        $this->db->query($sql);
+        $qty = (int) $data['qty'];
+        $id = (int) $data['item_id'];
+        $this->db->query("UPDATE p_item SET stock = stock - ? WHERE item_id = ?", [$qty, $id]);
     }
     function update_item_data($item_id, $new_price, $new_pk){
         $this->db->set('modal',$new_price);
@@ -399,7 +397,10 @@ class item_m extends CI_Model {
     public function get_avg_qty_per_transaction($item_id)
     {
         $query = $this->db->query(
-            "SELECT COALESCE(AVG(qty), 1) AS avg_qty FROM t_sale_detail WHERE item_id = ?",
+            "SELECT COALESCE(AVG(tsd.qty), 1) AS avg_qty
+             FROM t_sale_detail tsd
+             JOIN t_sale ts ON ts.sale_id = tsd.sale_id
+             WHERE tsd.item_id = ? AND ts.is_cancelled = 0",
             [(int) $item_id]
         );
         return (float) $query->row()->avg_qty;

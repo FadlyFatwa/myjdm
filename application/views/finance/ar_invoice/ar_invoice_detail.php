@@ -107,10 +107,19 @@
                 </a>
             <?php endif; ?>
 
-            <?php if (empty($ar->kontra_bon_id) && $ar->status != 'void' && $ar->paid_amount == 0 && in_array($this->session->userdata('level'), [1])): ?>
+            <?php if (empty($ar->kontra_bon_id) && $ar->status != 'void' && $ar->paid_amount == 0 && in_array($this->session->userdata('level'), [1, 2])): ?>
                 <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-void">
                     <i class="fa fa-ban"></i> Batalkan
                 </button>
+            <?php endif; ?>
+
+            <?php if ($ar->status == 'void' && in_array($this->session->userdata('level'), [1, 2])): ?>
+                <form method="post" action="<?= site_url('ar-invoice/reactivate/' . $ar->ar_invoice_id) ?>" onsubmit="return confirm('Aktifkan kembali piutang ini? Saldo piutang customer akan bertambah lagi sebesar sisa tagihan.');" style="display:inline-block;">
+                    <input type="hidden" name="<?= $this->security->get_csrf_token_name() ?>" value="<?= $this->security->get_csrf_hash() ?>">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fa fa-refresh"></i> Aktifkan
+                    </button>
+                </form>
             <?php endif; ?>
         </div>
     </div>

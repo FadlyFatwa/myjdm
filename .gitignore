@@ -10,6 +10,9 @@ application/logs/*
 
 composer.lock
 
+# local secrets - copy from *.example and fill in real values
+application/config/whatsapp.php
+
 user_guide_src/build/*
 user_guide_src/cilexer/build/*
 user_guide_src/cilexer/dist/*

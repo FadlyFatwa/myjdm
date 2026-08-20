@@ -30,7 +30,7 @@
                             <select name="customer_id" class="form-control select2" style="width:100%" required>
                                 <option value="">- Pilih Customer -</option>
                                 <?php foreach ($customers as $c): ?>
-                                    <option value="<?= $c->customer_id ?>"><?= $c->nama_customer ?> (<?= $c->phone ?>)</option>
+                                    <option value="<?= $c->customer_id ?>" data-percent="<?= $c->gross_discount_percent ?>"><?= $c->nama_customer ?> (<?= $c->phone ?>)</option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -42,9 +42,14 @@
                             <label>Jatuh Tempo (opsional, default sesuai termin customer)</label>
                             <input type="date" name="due_date" class="form-control">
                         </div>
+                        <div class="form-group" id="gross_amount_group" style="display:none">
+                            <label>Brutto (Rp) *</label>
+                            <input type="text" name="gross_amount" id="gross_amount" class="form-control input-rupiah" value="0">
+                            <p class="help-block">Customer ini punya kesepakatan brutto/netto — isi nominal brutto sesuai nota, netto dihitung otomatis.</p>
+                        </div>
                         <div class="form-group">
                             <label>Jumlah (Rp) *</label>
-                            <input type="text" name="amount" class="form-control input-rupiah" value="0" required>
+                            <input type="text" name="amount" id="amount" class="form-control input-rupiah" value="0" required>
                         </div>
                         <div class="form-group">
                             <label>Akun Lawan (Kredit) *</label>
@@ -79,5 +84,29 @@ $(document).ready(function() {
         var val = $(this).val().replace(/\D/g, '');
         $(this).val(parseInt(val || 0).toLocaleString('id-ID').replace(/,/g, '.'));
     });
+
+    function rupiahToInt(val) {
+        return parseInt(String(val).replace(/\D/g, '') || 0, 10);
+    }
+    function formatRupiah(val) {
+        return val.toLocaleString('id-ID').replace(/,/g, '.');
+    }
+
+    function recalcNetto() {
+        var percent = parseFloat($('select[name="customer_id"]').find(':selected').data('percent')) || 0;
+        if (percent > 0) {
+            $('#gross_amount_group').show();
+            var brutto = rupiahToInt($('#gross_amount').val());
+            var netto = Math.round(brutto * (1 - percent / 100));
+            $('#amount').val(formatRupiah(netto)).prop('readonly', true);
+        } else {
+            $('#gross_amount_group').hide();
+            $('#gross_amount').val('0');
+            $('#amount').prop('readonly', false);
+        }
+    }
+
+    $(document).on('change', 'select[name="customer_id"]', recalcNetto);
+    $(document).on('input', '#gross_amount', recalcNetto);
 });
 </script>

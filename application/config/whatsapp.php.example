@@ -1,0 +1,8 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+$config['wa_token']    = 'REPLACE_WITH_FONNTE_TOKEN';
+$config['wa_group_id'] = 'REPLACE_WITH_GROUP_ID@g.us'; // format grup Fonnte — penerimaan barang
+$config['wa_enabled']  = TRUE; // bisa dimatikan tanpa ubah kode
+
+$config['wa_stock_group_id'] = 'REPLACE_WITH_STOCK_GROUP_ID@g.us'; // format grup Fonnte — notifikasi stok habis/menipis (isi ID grupnya)

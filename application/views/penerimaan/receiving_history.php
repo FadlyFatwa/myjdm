@@ -6,7 +6,6 @@
     </h1>
     <ol class="breadcrumb">
         <li><a href="<?= site_url('dashboard') ?>"><i class="fa fa-dashboard"></i> Home</a></li>
-        <li><a href="<?= site_url('purchase-order') ?>">Purchase Order</a></li>
         <li class="active">Histori Penerimaan</li>
     </ol>
 </div>
@@ -25,6 +24,11 @@
     <div class="box box-primary">
         <div class="box-header with-border">
             <h3 class="box-title"><i class="fa fa-history"></i> Riwayat Goods Receipt</h3>
+            <div class="box-tools pull-right" style="font-size:11px">
+                <span class="label label-success"><i class="fa fa-check-circle"></i> Sudah Dilabeli</span>
+                <span class="label label-warning"><i class="fa fa-clock-o"></i> Belum Dilabeli</span>
+                <span class="label label-default"><i class="fa fa-ban"></i> Kosong</span>
+            </div>
         </div>
         <div class="box-body">
             <table id="tbl-history" class="table table-bordered table-hover" style="width:100%">
@@ -39,6 +43,7 @@
                         <th class="text-center">Item</th>
                         <th class="text-center">Total Qty</th>
                         <th>Diterima Oleh</th>
+                        <th class="text-center">Status</th>
                         <th width="80" class="text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -73,6 +78,7 @@ $(function () {
             { data: 'total_lines',         orderable: false, className: 'text-center' },
             { data: 'total_qty',           orderable: false, className: 'text-center' },
             { data: 'received_by_name',    orderable: false },
+            { data: 'status_label',        orderable: false, className: 'text-center' },
             { data: 'action',              orderable: false, className: 'text-center' },
         ],
         order: [[0, 'desc']],
@@ -87,7 +93,6 @@ $(function () {
         },
         createdRow: function (row, data) {
             if (data.is_empty) {
-                $(row).css({ background: '#fff3cd', opacity: '.85' });
                 $(row).attr('title', 'Penerimaan kosong — tidak ada barang diterima');
             }
         },

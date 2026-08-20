@@ -60,6 +60,7 @@ class Unit extends CI_Controller {
 
 	public function del($id)
 	{
+		if ($this->input->method() !== 'post') show_404();
 		$this->unit_m->del($id);
 		if($this->db->affected_rows() > 0){
 			$this->session->set_flashdata('success','Data Unit berhasil dihapus');

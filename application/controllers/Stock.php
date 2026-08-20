@@ -8,6 +8,7 @@ class Stock extends CI_Controller {
 	function __construct(){
 		parent::__construct();
 		check_not_login();
+		check_allowed_levels([1, 2]);
         $this->load->model(['item_m','supplier_m','stock_m','unit_m']);
 	}
     public function get_json() {
@@ -226,6 +227,7 @@ class Stock extends CI_Controller {
 
 
     public function stock_in_del(){
+        if ($this->input->method() !== 'post') show_404();
         $stock_id = $this->uri->segment(4);
         $item_id = $this->uri->segment(5);
         $qty = $this->stock_m->get($stock_id)->row()->qty;
@@ -483,6 +485,7 @@ class Stock extends CI_Controller {
     }
     public function stock_out_del()
     {
+        if ($this->input->method() !== 'post') show_404();
         $stock_id = $this->uri->segment(4);
         $item_id = $this->uri->segment(5);
         $qty = $this->stock_m->get($stock_id)->row()->qty;

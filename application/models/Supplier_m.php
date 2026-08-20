@@ -18,7 +18,8 @@ class Supplier_m extends CI_Model {
             'nama_supplier' => $post['nama_supplier'],
             'phone' => $post['telp'],
             'alamat' => $post['alamat'],
-            'keterangan' => empty($post['keterangan']) ? null : $post['keterangan'],              
+            'keterangan' => empty($post['keterangan']) ? null : $post['keterangan'],
+            'payment_term_days' => (int) ($post['payment_term_days'] ?? 0),
         ];
         $this->db->insert('supplier',$params);
     }
@@ -29,7 +30,8 @@ class Supplier_m extends CI_Model {
             'nama_supplier' => $post['nama_supplier'],
             'phone' => $post['telp'],
             'alamat' => $post['alamat'],
-            'keterangan' => empty($post['keterangan']) ? null : $post['keterangan'],              
+            'keterangan' => empty($post['keterangan']) ? null : $post['keterangan'],
+            'payment_term_days' => (int) ($post['payment_term_days'] ?? 0),
         ];
         $this->db->where('supplier_id',$post['id']);
         $this->db->update('supplier',$params);

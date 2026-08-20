@@ -26,6 +26,7 @@ class Report_tax_m extends CI_Model {
                 d.price_sale > 1000
                 AND d.qty > 0
                 AND d.total > 0
+                AND s.is_cancelled = 0
                 AND DATE_FORMAT(s.date,'%Y-%m') = ?
             GROUP BY s.sale_id
             HAVING SUM(d.total) >= 1000

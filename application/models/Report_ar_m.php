@@ -51,8 +51,11 @@ class Report_ar_m extends CI_Model {
      */
     public function get_aging($as_of_date)
     {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $as_of_date)) {
+            $as_of_date = date('Y-m-d');
+        }
         $this->db->select("ar_invoice.*, customer.nama_customer,
-            GREATEST(DATEDIFF('$as_of_date', ar_invoice.due_date), 0) AS days_overdue", false);
+            GREATEST(DATEDIFF(" . $this->db->escape($as_of_date) . ", ar_invoice.due_date), 0) AS days_overdue", false);
         $this->db->from('ar_invoice');
         $this->db->join('customer', 'customer.customer_id = ar_invoice.customer_id');
         $this->db->where_in('ar_invoice.status', ['outstanding', 'partial']);
@@ -98,5 +101,30 @@ class Report_ar_m extends CI_Model {
         }
 
         return array_values($summary);
+    }
+
+    /**
+     * Daftar piutang per periode (invoice_date), semua status kecuali difilter,
+     * opsional dibatasi ke satu customer.
+     */
+    public function get_period_list($from, $to, $status = '', $customer_id = '')
+    {
+        $this->db->select('ar_invoice.*, customer.nama_customer');
+        $this->db->from('ar_invoice');
+        $this->db->join('customer', 'customer.customer_id = ar_invoice.customer_id');
+        $this->db->where('ar_invoice.invoice_date >=', $from);
+        $this->db->where('ar_invoice.invoice_date <=', $to);
+        if ($status === 'lunas') {
+            $this->db->where('ar_invoice.status', 'paid');
+        } elseif ($status === 'belum_lunas') {
+            $this->db->where_in('ar_invoice.status', ['outstanding', 'partial']);
+        } elseif ($status === 'void') {
+            $this->db->where('ar_invoice.status', 'void');
+        }
+        if (!empty($customer_id)) {
+            $this->db->where('ar_invoice.customer_id', $customer_id);
+        }
+        $this->db->order_by('ar_invoice.invoice_date', 'ASC');
+        return $this->db->get()->result();
     }
 }

@@ -73,17 +73,32 @@ body.dark-mode table.dataTable tbody tr { background:#222537 !important; color:#
 body.dark-mode table.dataTable tbody tr:hover { background:#252836 !important; }
 body.dark-mode table.dataTable tbody tr.odd  { background:#1e2233 !important; }
 body.dark-mode table.dataTable tbody tr.even { background:#222537 !important; }
-body.dark-mode table.dataTable tbody td { border-color:#2d3148 !important; }
-body.dark-mode table.dataTable.table-bordered { border-color:#2d3148 !important; }
+body.dark-mode table.dataTable tbody td { border-color:#3d4463 !important; }
+body.dark-mode table.dataTable.table-bordered { border-color:#3d4463 !important; }
 
-/* dark mode — row states */
-body.dark-mode table.dataTable tbody tr.row-overdue {
-    background:#2d1e0a !important;
-    border-left:3px solid #e65100 !important;
+/* Selector ber-ID: memastikan menang lawan CSS bawaan plugin DataTables (border-top/right-width:0) */
+#tbl-po-list.dataTable > tbody > tr > td {
+    border-bottom: 1px solid #dee2e6 !important;
 }
-body.dark-mode table.dataTable tbody tr.row-overdue:hover { background:#3a2510 !important; }
-body.dark-mode table.dataTable tbody tr.row-received { background:#0d2e1d !important; }
-body.dark-mode table.dataTable tbody tr.row-cancelled { opacity:.5; }
+body.dark-mode #tbl-po-list.dataTable > tbody > tr > td {
+    border-bottom: 1px solid #3d4463 !important;
+}
+
+/* ── Row states — aksen border kiri saja, tidak menimpa background baris ── */
+table.dataTable tbody tr.row-overdue   { border-left:3px solid #e65100; }
+table.dataTable tbody tr.row-received  { border-left:3px solid #00a65a; }
+table.dataTable tbody tr.row-cancelled { opacity:.6; }
+body.dark-mode table.dataTable tbody tr.row-overdue   { border-left:3px solid #e65100 !important; }
+body.dark-mode table.dataTable tbody tr.row-received  { border-left:3px solid #00a65a !important; }
+body.dark-mode table.dataTable tbody tr.row-cancelled { opacity:.6; }
+
+/* ── Tombol aksi — sejajar walaupun jumlah tombol tiap baris beda ── */
+.po-actions { display:flex; gap:4px; justify-content:center; align-items:center; }
+.po-action-placeholder { visibility:hidden; }
+
+/* ── Status — badge ditumpuk rapi, bukan wrap sembarangan ── */
+.po-status { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
+.po-status .label { white-space:nowrap; }
 </style>
 
 <!-- Filter tabs -->
@@ -124,6 +139,9 @@ body.dark-mode table.dataTable tbody tr.row-cancelled { opacity:.5; }
             <i class="fa fa-list-alt"></i> Semua Purchase Order
         </h3>
         <div class="box-tools pull-right">
+            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-receive-direct">
+                <i class="fa fa-inbox"></i> Terima Tanpa PO
+            </button>
             <a href="<?= site_url('po-cart') ?>" class="btn btn-success btn-sm">
                 <i class="fa fa-cart-plus"></i> Keranjang PO
             </a>
@@ -146,6 +164,41 @@ body.dark-mode table.dataTable tbody tr.row-cancelled { opacity:.5; }
     </div>
 </div>
 
+</div>
+
+<!-- Modal Terima Tanpa PO -->
+<div class="modal fade" id="modal-receive-direct" tabindex="-1">
+    <div class="modal-dialog" style="max-width:440px">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#222d32;color:#fff;border-bottom:3px solid #00a65a">
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-inbox"></i> Terima Barang Tanpa PO</h4>
+            </div>
+            <form action="<?= site_url('purchase-order/receive-direct') ?>" method="post">
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size:12.5px">
+                        Untuk barang yang langsung diorder &amp; diterima tanpa PO formal
+                        (mis. pesanan via WhatsApp). Pilih supplier, lalu tambahkan barangnya
+                        satu per satu di layar penerimaan.
+                    </p>
+                    <input type="hidden" name="<?= $this->security->get_csrf_token_name() ?>" value="<?= $this->security->get_csrf_hash() ?>">
+                    <div class="form-group">
+                        <label>Supplier <span class="text-red">*</span></label>
+                        <select name="supplier_id" class="form-control" required>
+                            <option value="">— Pilih Supplier —</option>
+                            <?php foreach ($suppliers as $s): ?>
+                            <option value="<?= $s->supplier_id ?>"><?= htmlspecialchars($s->nama_supplier) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success"><i class="fa fa-arrow-right"></i> Lanjutkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -198,19 +251,10 @@ $(function () {
         createdRow: function (row, data) {
             if (data.is_overdue) {
                 $(row).addClass('row-overdue');
-                if (!document.body.classList.contains('dark-mode')) {
-                    $(row).css({ 'background': '#fff8e1', 'border-left': '3px solid #e65100' });
-                }
             } else if (data.status && data.status.indexOf('label-success') !== -1) {
                 $(row).addClass('row-received');
-                if (!document.body.classList.contains('dark-mode')) {
-                    $(row).addClass('success');
-                }
             } else if (data.status && data.status.indexOf('label-danger') !== -1) {
                 $(row).addClass('row-cancelled');
-                if (!document.body.classList.contains('dark-mode')) {
-                    $(row).css('opacity', '.65');
-                }
             }
         },
     });

@@ -322,18 +322,77 @@ class Sale_m extends CI_Model {
     }
     
 
-    public function del_sale($id){
-        $this->db->where('sale_id', $id)->delete('t_sale_jasa_detail');
-        $this->db->where('sale_id', $id)->delete('t_sale');
+    /**
+     * Batalkan transaksi: kembalikan stok, lalu tandai t_sale sebagai dibatalkan.
+     * Row t_sale, t_sale_detail, dan t_sale_jasa_detail TIDAK dihapus fisik —
+     * dibiarkan utuh sebagai histori (barang/jasa apa saja yang tadinya dibeli
+     * tetap bisa dilihat di Detail transaksi meski sudah dibatalkan).
+     *
+     * Stok ditambah manual di sini (bukan lewat trigger `stock_return`, yang cuma
+     * nyala kalau row t_sale_detail benar-benar di-DELETE) — karena baris detail
+     * sengaja tidak dihapus, trigger itu tidak pernah kepanggil di alur ini,
+     * jadi tidak ada risiko stok ditambah dobel.
+     */
+    public function cancel_sale($id, $reason, $user_id) {
+        $this->db->trans_start();
+
+        $details = $this->db->where('sale_id', $id)->get('t_sale_detail')->result();
+        foreach ($details as $d) {
+            $this->db->set('stock', 'stock + ' . (int) $d->qty, false)
+                      ->where('item_id', $d->item_id)
+                      ->update('p_item');
+        }
+
+        $this->db->where('sale_id', $id)->update('t_sale', [
+            'is_cancelled'  => 1,
+            'cancel_reason' => $reason,
+            'cancelled_by'  => $user_id,
+            'cancelled_at'  => date('Y-m-d H:i:s'),
+        ]);
+
+        $this->db->trans_complete();
+        return $this->db->trans_status();
+    }
+
+    /**
+     * Aktifkan kembali transaksi yang sudah dibatalkan: kurangi stok lagi
+     * (kebalikan dari cancel_sale) dan hapus tanda pembatalannya.
+     */
+    public function reactivate_sale($id, $user_id) {
+        $sale = $this->db->where('sale_id', $id)->get('t_sale')->row();
+        if (!$sale) return false;
+        if (!$sale->is_cancelled) {
+            throw new Exception('Transaksi ini tidak dalam status dibatalkan.');
+        }
+
+        $this->db->trans_start();
+
+        $details = $this->db->where('sale_id', $id)->get('t_sale_detail')->result();
+        foreach ($details as $d) {
+            $this->db->set('stock', 'stock - ' . (int) $d->qty, false)
+                      ->where('item_id', $d->item_id)
+                      ->update('p_item');
+        }
+
+        $this->db->where('sale_id', $id)->update('t_sale', [
+            'is_cancelled'  => 0,
+            'cancel_reason' => null,
+            'cancelled_by'  => null,
+            'cancelled_at'  => null,
+        ]);
+
+        $this->db->trans_complete();
+        return $this->db->trans_status();
     }
 
     public function get_filtered_sales($post)
     {
-        $this->db->select('*, customer.nama_customer as customer_name, user.username as user_name, 
+        $this->db->select('*, customer.nama_customer as customer_name, user.username as user_name,
                         t_sale.create as sale_created');
         $this->db->from('t_sale');
         $this->db->join('customer', 't_sale.customer_id = customer.customer_id', 'left');
         $this->db->join('user', 't_sale.user_id = user.user_id');
+        $this->db->where('t_sale.is_cancelled', 0);
         if(!empty($post['date1']) && !empty($post['date2'])) {
             $this->db->where('t_sale.date >=', $post['date1']);
             $this->db->where('t_sale.date <=', $post['date2']);
@@ -359,6 +418,7 @@ class Sale_m extends CI_Model {
         $this->db->join('t_sale', 't_sale_detail.sale_id = t_sale.sale_id', 'left');
         $this->db->join('p_item', 't_sale_detail.item_id = p_item.item_id', 'left');
         $this->db->join('customer', 't_sale.customer_id = customer.customer_id', 'left');
+        $this->db->where('(t_sale.is_cancelled = 0 OR t_sale.is_cancelled IS NULL)', null, false);
         if($id != null){
             $this->db->where('sale_id', $id);
         }
@@ -389,7 +449,8 @@ class Sale_m extends CI_Model {
         $this->db->from('t_sale');
         $this->db->join('t_sale_detail', 't_sale.sale_id = t_sale_detail.sale_id');
         $this->db->join('p_item', 't_sale_detail.item_id = p_item.item_id');
-    
+        $this->db->where('t_sale.is_cancelled', 0);
+
         // Custom search functionality
         if (!empty($keyword)) {
             $keywords = explode(" ", $keyword);
@@ -413,8 +474,10 @@ class Sale_m extends CI_Model {
     public function get_barang_teranalisis($keyword = null) {
         $this->db->select('p_item.item_id,supplier.nama_supplier, p_item.modal , p_item.pk, p_item.nama_item, SUM(t_sale_detail.qty) AS total_qty_sold');
         $this->db->from('t_sale_detail');
+        $this->db->join('t_sale', 't_sale_detail.sale_id = t_sale.sale_id');
         $this->db->join('p_item', 't_sale_detail.item_id = p_item.item_id');
         $this->db->join('supplier', 'supplier.supplier_id = p_item.supplier_id');
+        $this->db->where('t_sale.is_cancelled', 0);
 
         // Custom search functionality
         if (!empty($keyword)) {

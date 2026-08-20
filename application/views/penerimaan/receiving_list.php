@@ -6,7 +6,6 @@
     </h1>
     <ol class="breadcrumb">
         <li><a href="<?= site_url('dashboard') ?>"><i class="fa fa-dashboard"></i> Home</a></li>
-        <li><a href="<?= site_url('purchase-order') ?>">Purchase Order</a></li>
         <li class="active">Penerimaan</li>
     </ol>
 </div>
@@ -51,7 +50,10 @@ body.dark-mode #sup-nav .sup-chip.btn-default:hover {
         <div class="col-xs-12" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span class="badge bg-yellow" style="font-size:13px;padding:5px 10px" id="badge-total-po">0 PO</span>
             <span class="badge bg-blue"   style="font-size:13px;padding:5px 10px" id="badge-total-sup">0 Supplier</span>
-            <div style="margin-left:auto">
+            <div style="margin-left:auto;display:flex;gap:8px">
+                <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-receive-direct">
+                    <i class="fa fa-inbox"></i> Terima Tanpa PO
+                </button>
                 <a href="<?= site_url('purchase-order') ?>" class="btn btn-default btn-sm">
                     <i class="fa fa-list"></i> Semua PO
                 </a>
@@ -89,6 +91,41 @@ body.dark-mode #sup-nav .sup-chip.btn-default:hover {
 </div>
 
 </div><!-- .content -->
+
+<!-- Modal Terima Tanpa PO -->
+<div class="modal fade" id="modal-receive-direct" tabindex="-1">
+    <div class="modal-dialog" style="max-width:440px">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#222d32;color:#fff;border-bottom:3px solid #00a65a">
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-inbox"></i> Terima Barang Tanpa PO</h4>
+            </div>
+            <form action="<?= site_url('purchase-order/receive-direct') ?>" method="post">
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size:12.5px">
+                        Untuk barang yang langsung diorder &amp; diterima tanpa PO formal
+                        (mis. pesanan via WhatsApp). Pilih supplier, lalu tambahkan barangnya
+                        satu per satu di layar penerimaan.
+                    </p>
+                    <input type="hidden" name="<?= $this->security->get_csrf_token_name() ?>" value="<?= $this->security->get_csrf_hash() ?>">
+                    <div class="form-group">
+                        <label>Supplier <span class="text-red">*</span></label>
+                        <select name="supplier_id" class="form-control" required>
+                            <option value="">— Pilih Supplier —</option>
+                            <?php foreach ($suppliers as $s): ?>
+                            <option value="<?= $s->supplier_id ?>"><?= htmlspecialchars($s->nama_supplier) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success"><i class="fa fa-arrow-right"></i> Lanjutkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <script>
 $(function () {

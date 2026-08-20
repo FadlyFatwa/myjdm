@@ -303,7 +303,7 @@ class item extends CI_Controller {
 
 				// Nama item + centang validasi
 
-				$nama_item = $row['nama_item'];
+				$nama_item = htmlspecialchars($row['nama_item']);
 				if ($this->fungsi->user_login()->level == 1 || $this->fungsi->user_login()->level == 2) {
 					$nama_item .= '<br>' . $status;
 				}else{
@@ -965,7 +965,7 @@ class item extends CI_Controller {
 	
 				$return_array = array(
 					'barcode' => $row['old_barcode'],
-					'nama_item' => $row['nama_item'] .'<br>'. '<br>' . $status_with_update,
+					'nama_item' => htmlspecialchars($row['nama_item']) .'<br>'. '<br>' . $status_with_update,
 					'nama_supplier' => $row['nama_supplier'],
 					'nama_category' => $row['nama_category'],
 					'nama_unit' => $row['nama_unit'],
@@ -1168,7 +1168,7 @@ class item extends CI_Controller {
 	
 				$return_array = array(
 					'barcode' => $row['old_barcode'],
-					'nama_item' => $row['nama_item'] .'<br>'. '<br>' . $status_with_update,
+					'nama_item' => htmlspecialchars($row['nama_item']) .'<br>'. '<br>' . $status_with_update,
 					'nama_supplier' => $row['nama_supplier'],
 					'nama_category' => $row['nama_category'],
 					'nama_unit' => $row['nama_unit'],
@@ -1190,6 +1190,7 @@ class item extends CI_Controller {
 
 	public function toggle_validate($id)
 	{
+		check_allowed_levels([1]);
 		$item = $this->item_m->get($id)->row();
 		if ($item) {
 			$new_status = $item->is_validated ? 0 : 1;
@@ -1211,6 +1212,7 @@ class item extends CI_Controller {
 		$this->db->from('t_sale');
 		$this->db->join('t_sale_detail', 't_sale.sale_id = t_sale_detail.sale_id');
 		$this->db->where('t_sale_detail.item_id', $item_id);
+		$this->db->where('t_sale.is_cancelled', 0);
 
 		$query = $this->db->get();
 		$result = $query->row();
@@ -1227,6 +1229,7 @@ class item extends CI_Controller {
 		$this->db->from('t_sale');
 		$this->db->join('t_sale_detail', 't_sale.sale_id = t_sale_detail.sale_id');
 		$this->db->where('item_id', $item_id);
+		$this->db->where('t_sale.is_cancelled', 0);
 		$this->db->group_by('YEAR(t_sale.date), MONTH(t_sale.date)');
 		$query = $this->db->get();
 	
@@ -1625,6 +1628,7 @@ class item extends CI_Controller {
 
 	public function hard_del($id)
 	{
+		check_allowed_levels([1]);
 		$this->item_m->del($id);
 		if($this->db->affected_rows() > 0){
 			$this->session->set_flashdata('success','Data Barang berhasil dihapus');
@@ -1634,6 +1638,7 @@ class item extends CI_Controller {
 	public function del($id)
 {
     check_allowed_levels([1, 2]);
+    if ($this->input->method() !== 'post') show_404();
     $this->item_m->soft_delete($id);
     if($this->db->affected_rows() > 0){
         $this->session->set_flashdata('success', 'Data Barang berhasil dinonaktifkan dan barcode dikosongkan');

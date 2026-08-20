@@ -15,9 +15,12 @@ $can_edit      = ($po->status === 'draft');
 $is_superadmin = ($this->fungsi->user_login()->level == 1);
 $can_modify    = $can_edit && $is_superadmin;
 
-$total_ordered  = array_sum(array_column((array)$details, 'qty_ordered'));
-$total_received = array_sum(array_column((array)$details, 'qty_received'));
-$pct_overall    = $total_ordered > 0 ? round($total_received / $total_ordered * 100) : 0;
+// qty_ordered=0 menandai baris "ekstra" (di luar rencana PO) — dikeluarkan dari
+// progress keseluruhan supaya tidak lebih dari 100% gara-gara barang ekstra.
+$planned_details = array_filter((array) $details, function ($d) { return (int) $d->qty_ordered > 0; });
+$total_ordered   = array_sum(array_column($planned_details, 'qty_ordered'));
+$total_received  = array_sum(array_column($planned_details, 'qty_received'));
+$pct_overall     = $total_ordered > 0 ? round($total_received / $total_ordered * 100) : 0;
 ?>
 
 <div class="content-header">
@@ -111,6 +114,11 @@ body.dark-mode select.form-control option { background:#1a1d27; }
                     <span class="label label-<?= $st['class'] ?>" style="font-size:12px;padding:4px 10px">
                         <i class="fa <?= $st['icon'] ?>"></i> <?= $st['label'] ?>
                     </span>
+                    <?php if ($po->is_direct): ?>
+                    <span class="label label-success" style="font-size:12px;padding:4px 10px" title="Dibuat otomatis dari penerimaan langsung tanpa PO formal">
+                        <i class="fa fa-inbox"></i> Langsung (Tanpa PO)
+                    </span>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="action-bar">

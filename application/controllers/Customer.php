@@ -25,6 +25,7 @@ class Customer extends CI_Controller {
 		$customer->keterangan = null;
 		$customer->credit_limit = 0;
 		$customer->payment_term_days = 0;
+		$customer->gross_discount_percent = null;
 		$customer->ar_balance = 0;
 		
 		$data = array(
@@ -58,12 +59,14 @@ class Customer extends CI_Controller {
 		$this->form_validation->set_rules('alamat',        'Alamat',       'trim|max_length[255]');
 		$this->form_validation->set_rules('credit_limit',      'Limit Kredit',        'trim|numeric|greater_than_equal_to[0]');
 		$this->form_validation->set_rules('payment_term_days', 'Termin Pembayaran',   'trim|numeric|greater_than_equal_to[0]');
+		$this->form_validation->set_rules('gross_discount_percent', 'Diskon Brutto/Netto', 'trim|numeric|greater_than_equal_to[0]|less_than_equal_to[100]');
 
 		$this->form_validation->set_message('required',   '%s wajib diisi');
 		$this->form_validation->set_message('min_length', '%s minimal 2 karakter');
 		$this->form_validation->set_message('max_length', '%s terlalu panjang');
 		$this->form_validation->set_message('numeric',    '%s harus berupa angka');
 		$this->form_validation->set_message('greater_than_equal_to', '%s tidak boleh negatif');
+		$this->form_validation->set_message('less_than_equal_to', '%s tidak boleh lebih dari 100');
 
 		if ($this->form_validation->run() === FALSE) {
 			$this->session->set_flashdata('error', strip_tags(validation_errors()));
@@ -85,6 +88,8 @@ class Customer extends CI_Controller {
 
 	public function del($id)
 	{
+		check_allowed_levels([1, 2, 3]);
+		if ($this->input->method() !== 'post') show_404();
 		$this->customer_m->del($id);
 		if($this->db->affected_rows() > 0){
 			$this->session->set_flashdata('success','Data Pembeli berhasil dihapus');

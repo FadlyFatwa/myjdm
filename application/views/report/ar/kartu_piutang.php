@@ -13,6 +13,9 @@
         <div class="box-header with-border">
             <h3 class="box-title">Kartu Piutang per Customer</h3>
             <div class="box-tools pull-right">
+                <a href="<?= site_url('report-ar/daftar') ?>" class="btn btn-info btn-sm">
+                    <i class="fa fa-list"></i> Lihat Daftar Piutang
+                </a>
                 <a href="<?= site_url('report-ar/aging') ?>" class="btn btn-warning btn-sm">
                     <i class="fa fa-clock-o"></i> Lihat Aging Piutang
                 </a>
