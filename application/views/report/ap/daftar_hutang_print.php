@@ -31,6 +31,7 @@
                 <th class="text-right">Jumlah</th>
                 <th class="text-right">Dibayar</th>
                 <th class="text-right">Sisa</th>
+                <th>Cara Bayar</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -54,6 +55,7 @@
                 <td class="text-right"><?= number_format($r->amount, 0, ',', '.') ?></td>
                 <td class="text-right"><?= number_format($r->paid_amount, 0, ',', '.') ?></td>
                 <td class="text-right"><?= number_format($r->outstanding_amount, 0, ',', '.') ?></td>
+                <td><?= $r->payment_type === 'cash' ? 'Cash' : 'Kredit' ?></td>
                 <td><?= $status_label[$r->status] ?? $r->status ?></td>
             </tr>
             <?php endforeach; ?>
@@ -62,7 +64,7 @@
                 <td class="text-right"><?= number_format($totals['amount'], 0, ',', '.') ?></td>
                 <td class="text-right"><?= number_format($totals['paid'], 0, ',', '.') ?></td>
                 <td class="text-right"><?= number_format($totals['outstanding'], 0, ',', '.') ?></td>
-                <td></td>
+                <td colspan="2"></td>
             </tr>
         </tbody>
     </table>

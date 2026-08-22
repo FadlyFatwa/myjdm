@@ -170,15 +170,26 @@ class Purchase_order extends CI_Controller {
                 "UPDATE p_item SET stock = stock + ? WHERE item_id = ?",
                 [(int) $detail->qty_received, $item_id]
             );
+
+            // Tanggal stok masuk mengikuti tanggal invoice resi ini (bukan tanggal
+            // saat tombol "Daftarkan" diklik, yang bisa jauh lebih belakangan dari
+            // tanggal invoice aslinya).
+            $stock_date = date('Y-m-d');
+            if ($detail->receipt_id) {
+                $receipt = $this->db->where('receipt_id', $detail->receipt_id)->get('po_receipt')->row();
+                if ($receipt && $receipt->invoice_date) $stock_date = $receipt->invoice_date;
+            }
+
             $this->db->insert('t_stock', [
-                'item_id'     => $item_id,
-                'type'        => 'in',
-                'supplier_id' => $po->supplier_id,
-                'qty'         => (int) $detail->qty_received,
-                'date'        => date('Y-m-d'),
-                'detail'      => 'GR ' . $po->po_number . ' (Registrasi Baru)',
-                'created_at'  => date('Y-m-d H:i:s'),
-                'updated_at'  => date('Y-m-d H:i:s'),
+                'item_id'      => $item_id,
+                'type'         => 'in',
+                'supplier_id'  => $po->supplier_id,
+                'po_detail_id' => $detail_id,
+                'qty'          => (int) $detail->qty_received,
+                'date'         => $stock_date,
+                'detail'       => 'GR ' . $po->po_number . ' (Registrasi Baru)',
+                'created_at'   => date('Y-m-d H:i:s'),
+                'updated_at'   => date('Y-m-d H:i:s'),
             ]);
         }
 

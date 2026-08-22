@@ -10,7 +10,7 @@ class Report_ap extends CI_Controller {
     {
         parent::__construct();
         check_not_login();
-        check_allowed_levels([1, 2, 3]);
+        check_allowed_levels([1, 2]);
         $this->load->model('Report_ap_m');
         $this->load->model('supplier_m');
     }
@@ -135,7 +135,7 @@ class Report_ap extends CI_Controller {
 
         $status_label = ['outstanding' => 'Belum Lunas', 'partial' => 'Belum Lunas', 'paid' => 'Lunas', 'void' => 'Void'];
 
-        $headers = ['No', 'No. AP', 'No. Invoice Supplier', 'Supplier', 'Tgl Invoice', 'Jatuh Tempo', 'Jumlah', 'Dibayar', 'Sisa', 'Status'];
+        $headers = ['No', 'No. AP', 'No. Invoice Supplier', 'Supplier', 'Tgl Invoice', 'Jatuh Tempo', 'Jumlah', 'Dibayar', 'Sisa', 'Cara Bayar', 'Status'];
         $sheet->fromArray($headers, null, 'A1');
 
         $row = 2;
@@ -151,6 +151,7 @@ class Report_ap extends CI_Controller {
                 (int) $r->amount,
                 (int) $r->paid_amount,
                 (int) $r->outstanding_amount,
+                $r->payment_type === 'cash' ? 'Cash' : 'Kredit',
                 $status_label[$r->status] ?? $r->status,
             ], null, 'A' . $row);
             $row++;

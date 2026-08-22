@@ -213,10 +213,18 @@ class Sale extends CI_Controller {
 			$cart    = $cart_check;
 			$details = $this->sale_service->buildSaleDetails($cart, $sale_id);
 
+			$temp_items_sold = [];
 			foreach ($cart as $value) {
 				$item = $this->sale_m->get_item($value->item_id);
 				if ($item && $item->price == 1) {
 					$this->sale_m->update_item_price($value->item_id, $value->cart_price);
+				}
+				if ($item && $item->status === 'temporary') {
+					$temp_items_sold[] = [
+						'nama_item' => $item->nama_item,
+						'price'     => $value->cart_price,
+						'qty'       => $value->qty,
+					];
 				}
 			}
 
@@ -306,6 +314,12 @@ class Sale extends CI_Controller {
 			// Hapus cart setelah proses pembayaran
 			$this->sale_m->del_cart(['user_id' => $this->session->userdata('userid')]);
 			$this->sale_m->del_cart_jasa(['user_id' => $this->session->userdata('userid')]);
+
+			// Reminder WA: baru dikirim setelah transaksi benar-benar diproses,
+			// supaya tidak ada notifikasi untuk barang sementara yang cuma dicoba tapi batal dijual.
+			if ($sale_id && !empty($temp_items_sold)) {
+				$this->_send_temp_item_wa_notif($temp_items_sold, $sale_id);
+			}
 
 			if ($sale_id) {
 				echo json_encode(['success' => true, 'sale_id' => $sale_id]);
@@ -909,6 +923,46 @@ class Sale extends CI_Controller {
 				'status'  => 'temporary',
 			]
 		]);
+	}
+
+	/**
+	 * Kirim pesan WA ke grup sebagai pengingat kalau ada barang sementara yang baru saja terjual,
+	 * supaya staff segera melengkapi data (supplier, modal/pk, stok) untuk didaftarkan jadi item resmi.
+	 * Dikirim setelah transaksi selesai diproses, bukan saat barang sementara pertama kali dibuat,
+	 * supaya tidak ada notifikasi untuk barang yang cuma dicoba tapi batal dijual.
+	 * Non-blocking: gagal kirim hanya dicatat di log, tidak menggagalkan transaksi.
+	 *
+	 * @param array $temp_items daftar ['nama_item' => string, 'price' => float, 'qty' => int]
+	 * @param int   $sale_id
+	 */
+	private function _send_temp_item_wa_notif(array $temp_items, int $sale_id): void
+	{
+		$user_id = (int) $this->session->userdata('userid');
+		$user    = $this->db->select('nama')->get_where('user', ['user_id' => $user_id])->row();
+
+		$lines = [
+			"⚠️ *BARANG SEMENTARA TERJUAL*",
+			"━━━━━━━━━━━━━━",
+			"🧾 No. Transaksi : {$sale_id}",
+			"👤 Kasir         : " . ($user->nama ?? '—'),
+			"📅 Tanggal       : " . indo_date(date('Y-m-d')),
+			"━━━━━━━━━━━━━━",
+			"📦 *Detail Barang Sementara*",
+		];
+
+		foreach ($temp_items as $i => $ti) {
+			$lines[] = ($i + 1) . '. ' . $ti['nama_item'] . ' — ' . $ti['qty'] . ' x Rp ' . number_format($ti['price'], 0, ',', '.');
+		}
+
+		$lines[] = "━━━━━━━━━━━━━━";
+		$lines[] = "_Data supplier, harga modal/PK, dan stok belum diisi._";
+		$lines[] = "_Mohon segera dicek & dilengkapi agar bisa didaftarkan jadi item resmi._";
+		$lines[] = "_Notifikasi otomatis dari sistem myjdm_";
+
+		$wa_result = $this->whatsapp->send_to_temp_item_group(implode("\n", $lines));
+		if (!$wa_result['success']) {
+			log_message('error', '[Sale] WA notifikasi barang sementara gagal terkirim untuk sale_id: ' . $sale_id);
+		}
 	}
 
 }

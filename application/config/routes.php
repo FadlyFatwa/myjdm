@@ -103,12 +103,10 @@ $route['purchase-order/history']         = 'penerimaan/receiving_history';
 $route['purchase-order/history-data']    = 'penerimaan/receiving_history_data';
 $route['purchase-order/history/(:num)']         = 'penerimaan/receiving_history_detail/$1';
 $route['purchase-order/history/(:num)/edit']    = 'penerimaan/edit_receipt_form/$1';
-$route['purchase-order/history/update-detail']  = 'penerimaan/update_receipt_detail';
 $route['purchase-order/history/delete-detail']  = 'penerimaan/delete_receipt_detail';
 $route['purchase-order/history/add-detail']     = 'penerimaan/add_receipt_detail';
 $route['purchase-order/history/add-extra-item'] = 'penerimaan/add_receipt_extra_item';
-$route['purchase-order/history/update-invoice'] = 'penerimaan/update_receipt_invoice';
-$route['purchase-order/history/update-ongkir']  = 'penerimaan/update_receipt_ongkir';
+$route['purchase-order/history/update-prices'] = 'penerimaan/update_receipt_prices';
 $route['purchase-order/history/delete/(:num)']  = 'penerimaan/delete_receipt/$1';
 $route['purchase-order/history/mark-labeled/(:num)']  = 'penerimaan/mark_labeled/$1';
 $route['purchase-order/add-detail']      = 'purchase_order/add_detail_draft';
@@ -224,6 +222,16 @@ $route['absensi/update-tarif']         = 'absensi/update_tarif';
 $route['absensi/void/(:num)']          = 'absensi/void/$1';
 $route['absensi/(:num)-(:num)-(:num)'] = 'absensi/index/$1/$2/$3';
 
+// ── Report: Operasional ─────────────────────────────────────
+$route['report-beban']        = 'report_beban/index';
+$route['report-beban/cetak']  = 'report_beban/cetak';
+$route['report-beban/export'] = 'report_beban/export_excel';
+
+// ── Report: Pembelian ───────────────────────────────────────
+$route['report-purchase']        = 'report_purchase/index';
+$route['report-purchase/cetak']  = 'report_purchase/cetak';
+$route['report-purchase/export'] = 'report_purchase/export_excel';
+
 // ── Report: Piutang ────────────────────────────────────────
 $route['report-ar']                    = 'report_ar/index';
 $route['report-ar/aging']              = 'report_ar/aging';
@@ -234,6 +242,16 @@ $route['report-ar/cetak-daftar']       = 'report_ar/cetak_daftar';
 $route['report-ar/export-daftar']      = 'report_ar/export_excel_daftar';
 $route['report-ar/kartu/(:num)']       = 'report_ar/kartu_piutang/$1';
 $route['report-ar/cetak-kartu/(:num)'] = 'report_ar/cetak_kartu/$1';
+
+// ── Finance: Pembayaran Keluar (riwayat hutang) ─────────────
+$route['pembayaran-keluar']         = 'pembayaran_keluar/index';
+$route['pembayaran-keluar/cetak']   = 'pembayaran_keluar/cetak';
+$route['pembayaran-keluar/export']  = 'pembayaran_keluar/export_excel';
+
+// ── Finance: Pembayaran Masuk (riwayat piutang) ─────────────
+$route['pembayaran-masuk']          = 'pembayaran_masuk/index';
+$route['pembayaran-masuk/cetak']    = 'pembayaran_masuk/cetak';
+$route['pembayaran-masuk/export']   = 'pembayaran_masuk/export_excel';
 
 // ── Report: Hutang ──────────────────────────────────────────
 $route['report-ap']                    = 'report_ap/index';

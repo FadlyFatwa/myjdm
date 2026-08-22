@@ -7,7 +7,7 @@ class Ar_kontra_bon_payment extends CI_Controller {
     {
         parent::__construct();
         check_not_login();
-        check_allowed_levels([1, 2, 3]);
+        check_allowed_levels([1, 2]);
         $this->load->model('Ar_kontra_bon_payment_m');
         $this->load->model('Ar_kontra_bon_m');
         $this->load->library('fungsi');

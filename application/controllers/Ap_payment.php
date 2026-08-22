@@ -7,7 +7,7 @@ class Ap_payment extends CI_Controller {
     {
         parent::__construct();
         check_not_login();
-        check_allowed_levels([1, 2, 3]);
+        check_allowed_levels([1, 2]);
         $this->load->model('Ap_payment_m');
         $this->load->model('Ap_invoice_m');
         $this->load->library('fungsi');
@@ -29,7 +29,7 @@ class Ap_payment extends CI_Controller {
 
     public function process()
     {
-        check_allowed_levels([1, 2, 3]);
+        check_allowed_levels([1, 2]);
 
         $post = [
             'ap_invoice_id'  => (int) $this->input->post('ap_invoice_id'),

@@ -82,7 +82,13 @@ body.dark-mode .invoice-settings-body { background:#1a1d27 !important; border-to
 body.dark-mode .edit-qty,
 body.dark-mode .edit-harga-list,
 body.dark-mode .edit-diskon-persen,
-body.dark-mode .edit-price { background:#1a1d27 !important; border-color:#374151 !important; color:#e5e7eb !important; }
+body.dark-mode .edit-price,
+body.dark-mode .edit-pk { background:#1a1d27 !important; border-color:#374151 !important; color:#e5e7eb !important; }
+body.dark-mode .edit-pk:disabled { background:#15171e !important; color:#6b7280 !important; }
+.prev-ppn, .prev-harga-final, .prev-pk-final { color:#555; }
+body.dark-mode .prev-ppn,
+body.dark-mode .prev-harga-final,
+body.dark-mode .prev-pk-final { background:#15171e !important; border-color:#374151 !important; color:#9ca3af !important; }
 body.dark-mode .edit-qty::placeholder,
 body.dark-mode .edit-harga-list::placeholder,
 body.dark-mode .edit-diskon-persen::placeholder,
@@ -179,13 +185,14 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
             <span class="text-muted" style="font-size:11px;margin-left:8px">Item di luar PO ini — sudah ada di sistem, atau belum terdaftar</span>
         </div>
 
-        <table class="table table-condensed table-bordered" style="margin:0">
+        <table id="edit-items-table" class="table table-condensed table-bordered" style="margin:0">
             <thead>
                 <tr class="edit-thead" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#555">
                     <th style="padding:8px 12px">Nama Barang</th>
                     <th style="padding:8px 12px;width:100px;text-align:center">Qty Diterima</th>
-                    <th style="padding:8px 12px;width:150px;text-align:right">Harga Aktual</th>
-                    <th style="padding:8px 12px;width:80px;text-align:center">PK</th>
+                    <th style="padding:8px 12px;width:130px;text-align:center">Harga List / Diskon %</th>
+                    <th style="padding:8px 12px;width:165px;text-align:right">Harga Aktual / PK <span class="text-muted" style="text-transform:none;font-weight:400">(ditahan)</span></th>
+                    <th class="ppn-prev-col" style="display:none;padding:8px 12px;width:150px;text-align:right">PPN / Harga Final / PK <span class="text-muted" style="text-transform:none;font-weight:400">(preview)</span></th>
                     <th style="padding:8px 12px;width:150px;text-align:right">Subtotal</th>
                     <th style="padding:8px 12px;width:80px;text-align:center"></th>
                 </tr>
@@ -227,29 +234,41 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                             <?= (int) $it->qty_ordered > 0 ? 'maks ' . $it->qty_ordered : 'ekstra, tanpa batas order' ?>
                         </div>
                     </td>
-                    <td style="padding:7px 12px;text-align:right" class="cell-price">
+                    <?php $level1 = (int) $this->fungsi->user_login()->level === 1; ?>
+                    <td style="padding:7px 8px;text-align:center">
                         <input type="text" class="form-control input-xs text-right edit-harga-list"
                             value="<?= $it->harga_list ? number_format((int) $it->harga_list, 0, ',', '.') : '' ?>"
-                            placeholder="Harga List" style="width:120px;margin-left:auto;margin-bottom:3px">
+                            placeholder="Harga List" style="width:110px;margin-bottom:3px" title="Harga sebelum diskon (opsional)" <?= $level1 ? '' : 'disabled' ?>>
                         <input type="text" class="form-control input-xs text-right edit-diskon-persen"
                             value="<?= $it->diskon_persen ? rtrim(rtrim(number_format($it->diskon_persen, 2, ',', ''), '0'), ',') : '' ?>"
-                            placeholder="Diskon %" style="width:120px;margin-left:auto;margin-bottom:3px">
-                        <input type="text" class="form-control input-xs text-right edit-price"
-                            value="<?= number_format((int)$it->actual_price, 0, ',', '.') ?>"
-                            style="width:120px;margin-left:auto">
+                            placeholder="Diskon %" style="width:110px" title="Diskon % dari Harga List (opsional)" <?= $level1 ? '' : 'disabled' ?>>
                     </td>
-                    <td style="padding:7px 12px;text-align:center">
-                        <span class="view-pk" style="font-family:monospace;font-size:12px;letter-spacing:1px">
-                            <?= htmlspecialchars($it->item_pk ?? '—') ?>
-                        </span>
+                    <td style="padding:7px 12px" class="cell-price">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-addon" style="font-size:11px">Rp</span>
+                            <input type="text" class="form-control text-right edit-price"
+                                value="<?= number_format((int)$it->actual_price, 0, ',', '.') ?>"
+                                style="width:110px" <?= $level1 ? '' : 'disabled' ?>>
+                        </div>
+                        <input type="text" class="form-control input-xs edit-pk"
+                            value="<?= htmlspecialchars($it->item_pk ?? '') ?>"
+                            style="margin-top:4px;font-family:monospace;letter-spacing:1px;text-transform:uppercase;font-size:11px"
+                            placeholder="PK (otomatis, bisa diedit)"
+                            title="Auto dari harga aktual. Bisa ditambah price list, cth: MY3/UMY2"
+                            <?= ($it->item_id && $level1) ? '' : 'disabled title="' . ($level1 ? 'Item belum terdaftar — PK diisi otomatis saat didaftarkan' : 'Hanya level 1 yang bisa mengubah PK') . '"' ?>>
+                    </td>
+                    <td class="ppn-prev-col" style="display:none;padding:7px 12px;text-align:right">
+                        <input type="text" class="form-control input-xs text-right prev-ppn" readonly tabindex="-1"
+                            placeholder="PPN" style="width:130px;margin-left:auto;margin-bottom:3px;background:#f4f6f9">
+                        <input type="text" class="form-control input-xs text-right prev-harga-final" readonly tabindex="-1"
+                            placeholder="Harga Final" style="width:130px;margin-left:auto;margin-bottom:3px;background:#f4f6f9">
+                        <input type="text" class="form-control input-xs prev-pk-final" readonly tabindex="-1"
+                            placeholder="PK Final" style="width:130px;margin-left:auto;font-family:monospace;letter-spacing:1px;text-transform:uppercase;font-size:11px;background:#f4f6f9">
                     </td>
                     <td style="padding:9px 12px;text-align:right;font-weight:600" class="cell-subtotal">
                         <?= indo_currency($subtotal) ?>
                     </td>
                     <td style="padding:7px 12px;text-align:center;white-space:nowrap" class="cell-action">
-                        <button type="button" class="btn btn-success btn-xs btn-save-row">
-                            <i class="fa fa-save"></i> Simpan
-                        </button>
                         <button type="button" class="btn btn-danger btn-xs btn-del-detail"
                             data-detail-id="<?= $it->id ?>"
                             data-receipt-id="<?= $receipt->receipt_id ?>"
@@ -265,6 +284,7 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
             <tfoot>
                 <tr class="edit-tfoot" style="font-weight:700">
                     <td colspan="4" style="padding:10px 12px;text-align:right;font-size:13px">Total Nilai Penerimaan</td>
+                    <td class="ppn-prev-col" style="display:none"></td>
                     <td style="padding:10px 12px;text-align:right;font-size:14px;color:#3c8dbc" id="grand-total-cell"><?= indo_currency($grand_total) ?></td>
                     <td class="cell-action"></td>
                 </tr>
@@ -275,6 +295,23 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
     <?php if ((int) $this->fungsi->user_login()->level === 1): ?>
     <div class="box-body invoice-settings-body">
         <h4 style="font-size:14px;margin:0 0 12px"><i class="fa fa-sliders"></i> Pengaturan Invoice</h4>
+        <div class="row" style="margin-bottom:0">
+            <div class="col-sm-4">
+                <div class="form-group">
+                    <label style="font-size:12px;font-weight:600">No. Invoice Supplier</label>
+                    <input type="text" id="inp-invoice-no" class="form-control"
+                           value="<?= htmlspecialchars($receipt->supplier_invoice_no ?? '') ?>"
+                           placeholder="cth: INV/2025/00123">
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="form-group">
+                    <label style="font-size:12px;font-weight:600">Tanggal Invoice</label>
+                    <input type="date" id="inp-invoice-date" class="form-control"
+                           value="<?= htmlspecialchars($receipt->invoice_date ?? '') ?>">
+                </div>
+            </div>
+        </div>
         <div class="row">
             <div class="col-sm-4">
                 <div class="form-group">
@@ -283,7 +320,15 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                            value="<?= number_format((int) $receipt->diskon_invoice, 0, ',', '.') ?>">
                 </div>
             </div>
-            <div class="col-sm-5">
+            <div class="col-sm-4">
+                <div class="form-group" style="margin-bottom:0">
+                    <label style="font-size:12px;font-weight:600">Ongkir (Rp)</label>
+                    <input type="text" id="inp-ongkir" class="form-control input-rp-fmt"
+                           value="<?= number_format((int) $receipt->ongkir, 0, ',', '.') ?>">
+                    <small class="text-muted">Ongkir lama otomatis di-void, dicatat ulang sebagai Beban baru</small>
+                </div>
+            </div>
+            <div class="col-sm-4">
                 <label style="font-size:12px;font-weight:600;display:block">Mode PPN</label>
                 <div class="radio" style="margin:3px 0 0">
                     <label style="font-weight:400;font-size:12.5px">
@@ -301,30 +346,18 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                     </label>
                 </div>
             </div>
-            <div class="col-sm-3">
-                <button type="button" class="btn btn-warning btn-sm" id="btn-save-invoice" style="margin-top:20px">
-                    <i class="fa fa-save"></i> Simpan Diskon &amp; PPN
-                </button>
-            </div>
         </div>
         <div class="alert alert-info" style="padding:8px 12px;font-size:12px;margin:10px 0 14px">
-            <i class="fa fa-info-circle"></i> Perubahan di sini cuma mempengaruhi total tagihan ke supplier —
-            harga beli item yang sudah tersimpan <b>tidak ikut diubah ulang</b>, meski mode "ditambah &amp; didistribusi" dipilih.
-        </div>
-        <div class="row">
-            <div class="col-sm-4">
-                <div class="form-group" style="margin-bottom:0">
-                    <label style="font-size:12px;font-weight:600">Ongkir (Rp)</label>
-                    <input type="text" id="inp-ongkir" class="form-control input-rp-fmt"
-                           value="<?= number_format((int) $receipt->ongkir, 0, ',', '.') ?>">
-                    <small class="text-muted">Ongkir lama otomatis di-void, dicatat ulang sebagai Beban baru</small>
-                </div>
-            </div>
-            <div class="col-sm-3">
-                <button type="button" class="btn btn-warning btn-sm" id="btn-save-ongkir" style="margin-top:20px">
-                    <i class="fa fa-save"></i> Simpan Ongkir
-                </button>
-            </div>
+            <i class="fa fa-info-circle"></i> Qty, Harga per baris, No. Invoice, Tanggal Invoice, Diskon Invoice, Ongkir, dan Mode PPN di atas
+            <b>belum tersimpan</b> — semuanya ditahan dulu dan baru diproses bareng dalam satu transaksi saat tombol
+            <b>"Simpan Semua Perubahan Harga &amp; Qty"</b> di bawah diklik. Kalau ada satu saja yang gagal disimpan,
+            seluruh perubahan dibatalkan (rollback), tidak ada yang tersimpan sebagian. Kalau Mode PPN "ditambah &amp; didistribusi"
+            aktif, harga beli tiap item <b>ikut dihitung ulang</b> saat itu juga sesuai porsi PPN-nya.
+            <?php if ($receipt->ppn_mode === 'add_distribute'): ?>
+            <br><i class="fa fa-info-circle"></i> Karena mode PPN resi ini sudah "ditambah &amp; didistribusi", kolom
+            <b>Harga Aktual</b> di bawah menampilkan harga <b>sebelum PPN</b> (PPN sudah "ditarik keluar" lagi dari harga
+            yang tersimpan) — biar tidak bingung dan tidak numpuk PPN di atas PPN tiap kali diedit ulang.
+            <?php endif; ?>
         </div>
     </div>
     <?php endif; ?>
@@ -336,19 +369,25 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                 + ($receipt->ppn_mode === 'add_distribute' ? (int) $receipt->ppn_nominal : 0);
         ?>
         <div class="total-box" style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between"><span>Subtotal Barang</span><span><?= indo_currency($subtotal_barang_edit) ?></span></div>
-            <?php if ((int) $receipt->diskon_invoice > 0): ?>
-            <div style="display:flex;justify-content:space-between"><span>Diskon Invoice</span><span>- <?= indo_currency($receipt->diskon_invoice) ?></span></div>
-            <?php endif; ?>
-            <?php if ($receipt->ppn_mode === 'add_distribute'): ?>
-            <div style="display:flex;justify-content:space-between"><span>PPN (ditambah &amp; didistribusi ke harga beli)</span><span>+ <?= indo_currency($receipt->ppn_nominal) ?></span></div>
-            <?php elseif ($receipt->ppn_mode === 'inclusive'): ?>
-            <div style="display:flex;justify-content:space-between"><span>PPN (sudah termasuk harga beli, diekstrak)</span><span><?= indo_currency($receipt->ppn_nominal) ?></span></div>
-            <?php endif; ?>
-            <div style="display:flex;justify-content:space-between;border-top:1px solid #ddd;margin-top:4px;padding-top:4px;font-weight:700" class="grand">
-                <span>Total Utang ke Supplier</span><span><?= indo_currency($total_tampil_edit) ?></span>
+            <div style="display:flex;justify-content:space-between"><span>Subtotal Barang</span><span id="edit-t-barang"><?= indo_currency($subtotal_barang_edit) ?></span></div>
+            <div id="edit-row-diskon" style="display:<?= (int) $receipt->diskon_invoice > 0 ? 'flex' : 'none' ?>;justify-content:space-between">
+                <span>Diskon Invoice</span><span id="edit-t-diskon">- <?= indo_currency($receipt->diskon_invoice) ?></span>
             </div>
+            <div id="edit-row-ppn" style="display:<?= $receipt->ppn_mode !== 'none' ? 'flex' : 'none' ?>;justify-content:space-between">
+                <span id="edit-lbl-ppn"><?= $receipt->ppn_mode === 'inclusive' ? 'PPN (sudah termasuk harga beli, diekstrak)' : 'PPN (ditambah & didistribusi ke harga beli)' ?></span>
+                <span id="edit-t-ppn"><?= $receipt->ppn_mode === 'add_distribute' ? '+ ' : '' ?><?= indo_currency($receipt->ppn_nominal) ?></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid #ddd;margin-top:4px;padding-top:4px;font-weight:700" class="grand">
+                <span>Total Utang ke Supplier</span><span id="edit-t-utang"><?= indo_currency($total_tampil_edit) ?></span>
+            </div>
+            <p class="text-muted" style="font-size:11px;margin:6px 0 0">
+                <i class="fa fa-info-circle"></i> Angka di atas cuma perkiraan live — nilai final dihitung ulang di server saat disimpan.
+            </p>
         </div>
+        <button type="button" class="btn btn-warning" id="btn-save-prices">
+            <i class="fa fa-save"></i>
+            <?= (int) $this->fungsi->user_login()->level === 1 ? 'Simpan Semua Perubahan Harga & Qty' : 'Simpan Perubahan Qty' ?>
+        </button>
     </div>
 <?php else: ?>
     <?php if (!empty($details)): ?>
@@ -388,6 +427,8 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                         <th width="90"  class="text-center" style="padding:9px 8px">Qty Terima</th>
                         <th width="130" class="text-center" style="padding:9px 8px">Harga List / Diskon %</th>
                         <th width="165" class="text-right"  style="padding:9px 12px">Harga Aktual / PK</th>
+                        <th class="ppn-prev-col" width="150" style="display:none;text-align:right;padding:9px 12px">PPN / Harga Final / PK <span class="text-muted" style="font-weight:400">(preview)</span></th>
+                        <th width="130" class="text-right" style="padding:9px 12px">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -489,6 +530,21 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                                    title="Auto dari harga aktual. Bisa ditambah price list, cth: MY3/UMY2">
                         <?php endif; ?>
                     </td>
+                    <td class="ppn-prev-col" style="display:none;padding:7px 12px;text-align:right">
+                        <?php if ($done): ?>
+                            <span class="text-muted">—</span>
+                        <?php else: ?>
+                            <input type="text" class="form-control input-xs text-right prev-ppn" readonly tabindex="-1"
+                                placeholder="PPN" style="width:130px;margin-left:auto;margin-bottom:3px;background:#f4f6f9">
+                            <input type="text" class="form-control input-xs text-right prev-harga-final" readonly tabindex="-1"
+                                placeholder="Harga Final" style="width:130px;margin-left:auto;margin-bottom:3px;background:#f4f6f9">
+                            <input type="text" class="form-control input-xs prev-pk-final" readonly tabindex="-1"
+                                placeholder="PK Final" style="width:130px;margin-left:auto;font-family:monospace;letter-spacing:1px;text-transform:uppercase;font-size:11px;background:#f4f6f9">
+                        <?php endif; ?>
+                    </td>
+                    <td class="text-right cell-subtotal" style="padding:9px 12px;font-weight:600">
+                        <?= $done ? '<span class="text-muted">—</span>' : 'Rp 0' ?>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -509,11 +565,13 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                         <th width="90" class="text-center" style="padding:9px 8px">Qty Terima</th>
                         <th width="130" class="text-center" style="padding:9px 8px">Harga List / Diskon %</th>
                         <th width="165" class="text-right" style="padding:9px 12px">Harga Aktual / PK</th>
+                        <th class="ppn-prev-col" width="150" style="display:none;text-align:right;padding:9px 12px">PPN / Harga Final / PK <span class="text-muted" style="font-weight:400">(preview)</span></th>
+                        <th width="130" class="text-right" style="padding:9px 12px">Subtotal</th>
                         <th width="40"></th>
                     </tr>
                 </thead>
                 <tbody id="extra-tbody">
-                    <tr id="extra-empty-row"><td colspan="5" class="text-center text-muted" style="padding:14px">Belum ada barang ekstra ditambahkan.</td></tr>
+                    <tr id="extra-empty-row"><td colspan="7" class="text-center text-muted" style="padding:14px">Belum ada barang ekstra ditambahkan.</td></tr>
                 </tbody>
             </table>
             <div style="padding:12px 16px">
@@ -554,10 +612,10 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
             <div class="row" style="margin-bottom:14px">
                 <div class="col-sm-4">
                     <div class="form-group" style="margin-bottom:0">
-                        <label style="font-size:12px;color:#555;font-weight:600">Cara Bayar Barang</label>
+                        <label style="font-size:12px;color:#555;font-weight:600">Cara Bayar Barang <span class="text-red">*</span></label>
                         <div class="radio" style="margin:3px 0 0">
                             <label style="font-weight:400;font-size:12.5px">
-                                <input type="radio" name="payment_type" value="credit" checked> Kredit (Tempo)
+                                <input type="radio" name="payment_type" value="credit"> Kredit (Tempo)
                             </label>
                         </div>
                         <div class="radio" style="margin:3px 0 0">
@@ -565,7 +623,7 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                                 <input type="radio" name="payment_type" value="cash"> Cash (Lunas)
                             </label>
                         </div>
-                        <small class="text-muted">Kredit tercatat sebagai hutang jatuh tempo; Cash langsung lunas otomatis.</small>
+                        <small class="text-muted">Kredit tercatat sebagai hutang jatuh tempo; Cash langsung lunas otomatis. Wajib dipilih salah satu.</small>
                     </div>
                 </div>
             </div>
@@ -586,10 +644,10 @@ body.dark-mode .edit-price::placeholder { color:#6b7280 !important; }
                 </div>
                 <div class="col-sm-4">
                     <div class="form-group" style="margin-bottom:0">
-                        <label style="font-size:12px;color:#555;font-weight:600">PPN <small class="text-muted">(sesuai kebijakan supplier)</small></label>
+                        <label style="font-size:12px;color:#555;font-weight:600">PPN <span class="text-red">*</span> <small class="text-muted">(sesuai kebijakan supplier)</small></label>
                         <div class="radio" style="margin:3px 0 0">
                             <label style="font-weight:400;font-size:12.5px">
-                                <input type="radio" name="ppn_mode" value="none" checked> Tanpa PPN
+                                <input type="radio" name="ppn_mode" value="none"> Tanpa PPN
                             </label>
                         </div>
                         <div class="radio" style="margin:3px 0">
@@ -821,6 +879,13 @@ $(function () {
             showConfirmButton:false, timer:3500, timerProgressBar:true });
     }
 
+    <?php $ferr = $this->session->flashdata('error'); if ($ferr): ?>
+    toast('error', '<?= addslashes($ferr) ?>');
+    <?php endif; ?>
+    <?php $fsuc = $this->session->flashdata('success'); if ($fsuc): ?>
+    toast('success', '<?= addslashes($fsuc) ?>');
+    <?php endif; ?>
+
     function formatRp(val) {
         var s = String(val).replace(/[^0-9]/g, '');
         return s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -844,6 +909,38 @@ $(function () {
         if (zeros > 1) out += 'Y' + zeros;
         else if (zeros === 1) out += 'Y';
         return out.toUpperCase();
+    }
+
+    // ── Preview per-baris PPN "ditambah & didistribusi" — mirror persis
+    // algoritma distribusi proporsional di server (_redistribute_ppn /
+    // receive()): baris terakhir menyerap sisa pembulatan. Cuma buat
+    // preview di layar, TIDAK dikirim ke server (server hitung ulang
+    // sendiri dari harga bersih yang tersimpan). ──
+    function computePpnPreview(rows, diskonInvoice) {
+        var subtotal = 0;
+        rows.forEach(function (r) { subtotal += r.qty * r.price; });
+        var subtotalSetelahDiskon = subtotal - diskonInvoice;
+        var ppnNominal = Math.round(subtotalSetelahDiskon * (11 / 12) * 0.12);
+        var count = rows.length;
+        var remaining = ppnNominal;
+        var out = [];
+        if (subtotal <= 0 || ppnNominal <= 0) {
+            rows.forEach(function (r) { out.push({ ppnUnit: 0, finalPrice: r.price }); });
+            return out;
+        }
+        rows.forEach(function (r, i) {
+            var rowSubtotal = r.qty * r.price;
+            var share;
+            if (i === count - 1) {
+                share = remaining;
+            } else {
+                share = Math.round(ppnNominal * (rowSubtotal / subtotal));
+                remaining -= share;
+            }
+            var ppnUnit = r.qty > 0 ? Math.round(share / r.qty) : 0;
+            out.push({ ppnUnit: ppnUnit, finalPrice: r.price + ppnUnit });
+        });
+        return out;
     }
 
     // ── Search item ─────────────────────────────────────────────
@@ -955,6 +1052,18 @@ $(function () {
             return;
         }
 
+        if ($('input[name="payment_type"]:checked').length === 0) {
+            Swal.fire({ icon:'warning', title:'Cara Bayar Barang belum dipilih',
+                text:'Pilih Kredit (Tempo) atau Cash (Lunas) terlebih dahulu.' });
+            return;
+        }
+
+        if ($('input[name="ppn_mode"]:checked').length === 0) {
+            Swal.fire({ icon:'warning', title:'PPN belum dipilih',
+                text:'Pilih salah satu opsi PPN terlebih dahulu.' });
+            return;
+        }
+
         Swal.fire({
             title: 'Proses penerimaan barang?',
             text : 'Stok akan diupdate. Harga beli & kode PK diperbarui jika ada perubahan.',
@@ -977,7 +1086,7 @@ $(function () {
 
     // ── Barang Ekstra ────────────────────────────────────────
     var supplierId  = <?= (int) $po->supplier_id ?>;
-    var nextBarcode = '<?= $next_barcode ?>'; // saran urutan berikutnya, naik tiap item baru berhasil dibuat
+    var nextBarcode = '<?= $next_barcode ?>'; // saran barcode berikutnya (halaman reload tiap kali item baru berhasil didaftarkan, jadi nilainya selalu segar dari server)
     var extraSearchTimer;
     var extraRowSeq = 0;
     var isEditMode  = <?= $receipt ? 'true' : 'false' ?>;
@@ -1017,6 +1126,65 @@ $(function () {
         $('#t-ongkir').text('Rp ' + ongkir.toLocaleString('id-ID'));
         $('#t-grand').text('Rp ' + (totalUtang + ongkir).toLocaleString('id-ID'));
         $('#row-ppn').toggle(ppnMode !== 'none');
+
+        updateCreatePpnPreview(ppnMode, diskonInvoice);
+    }
+
+    // ── Preview per-baris "PPN / Harga Final / PK" (mode Create) — cuma
+    // tampil saat Mode PPN "ditambah & didistribusi" dipilih, readonly,
+    // murni informasi (nilai final sesungguhnya dihitung ulang di server).
+    // Juga yang menghitung ulang kolom Subtotal per baris (qty × harga final:
+    // harga + PPN kalau mode add_distribute aktif, atau harga polos kalau tidak). ──
+    function updateCreatePpnPreview(ppnMode, diskonInvoice) {
+        var show = ppnMode === 'add_distribute';
+        $('.ppn-prev-col').toggle(show);
+
+        var $allRows = $('#form-gr tr').filter(function () {
+            var $tr = $(this);
+            return $tr.find('input[name="qty_received[]"]').length && $tr.find('input[name="actual_price[]"]').length;
+        });
+
+        if (!show) {
+            $allRows.each(function () {
+                var $tr   = $(this);
+                var $sub  = $tr.find('.cell-subtotal');
+                if (!$sub.length) return; // baris "Selesai": tidak ada kolom subtotal aktif
+                var qty   = parseInt($tr.find('input[name="qty_received[]"]').val()) || 0;
+                var price = unformatRp($tr.find('input[name="actual_price[]"]').val());
+                $tr.find('.prev-ppn, .prev-harga-final, .prev-pk-final').val('');
+                $sub.text('Rp ' + (qty * price).toLocaleString('id-ID'));
+            });
+            return;
+        }
+
+        // baris qty 0 tidak ikut dihitung sama sekali (persis seperti server yang
+        // skip baris qty<=0 saat receive()) supaya baris terakhir yang benar-benar
+        // dapat "sisa pembulatan" cocok dengan yang dihitung ulang di server.
+        var rowsData = [], rowRefs = [];
+        $allRows.each(function () {
+            var $tr  = $(this);
+            var $sub = $tr.find('.cell-subtotal');
+            $tr.find('.prev-ppn, .prev-harga-final, .prev-pk-final').val('');
+            var qty = parseInt($tr.find('input[name="qty_received[]"]').val()) || 0;
+            if (qty <= 0) {
+                if ($sub.length) $sub.text('Rp 0');
+                return;
+            }
+            rowsData.push({ qty: qty, price: unformatRp($tr.find('input[name="actual_price[]"]').val()) });
+            rowRefs.push($tr);
+        });
+        var results = computePpnPreview(rowsData, diskonInvoice);
+        rowRefs.forEach(function ($tr, i) {
+            var r         = results[i];
+            var qty       = parseInt($tr.find('input[name="qty_received[]"]').val()) || 0;
+            var hargaList = unformatRp($tr.find('.input-harga-list').val());
+            var pkFinal   = priceToK(String(r.finalPrice)) + (hargaList > 0 ? ' | PL ' + priceToK(String(hargaList)) : '');
+            $tr.find('.prev-ppn').val('Rp ' + formatRp(String(r.ppnUnit)));
+            $tr.find('.prev-harga-final').val('Rp ' + formatRp(String(r.finalPrice)));
+            $tr.find('.prev-pk-final').val(pkFinal);
+            var $sub = $tr.find('.cell-subtotal');
+            if ($sub.length) $sub.text('Rp ' + (qty * r.finalPrice).toLocaleString('id-ID'));
+        });
     }
 
     $('#btn-open-extra').on('click', function () {
@@ -1181,6 +1349,11 @@ $(function () {
                 + (hargaList > 0 ? ' readonly' : '') + ' style="width:110px"></div>'
                 + '<input type="text" name="pk_new[]" class="form-control input-xs input-pk-new" value="' + pk + '" '
                 + 'style="margin-top:4px;font-family:monospace;letter-spacing:1px;text-transform:uppercase;font-size:11px"></td>'
+                + '<td class="ppn-prev-col" style="display:none;padding:7px 12px;text-align:right">'
+                + '<input type="text" class="form-control input-xs text-right prev-ppn" readonly tabindex="-1" placeholder="PPN" style="width:130px;margin-left:auto;margin-bottom:3px;background:#f4f6f9">'
+                + '<input type="text" class="form-control input-xs text-right prev-harga-final" readonly tabindex="-1" placeholder="Harga Final" style="width:130px;margin-left:auto;margin-bottom:3px;background:#f4f6f9">'
+                + '<input type="text" class="form-control input-xs prev-pk-final" readonly tabindex="-1" placeholder="PK Final" style="width:130px;margin-left:auto;font-family:monospace;letter-spacing:1px;text-transform:uppercase;font-size:11px;background:#f4f6f9"></td>'
+                + '<td class="text-right cell-subtotal" style="padding:9px 12px;font-weight:600">Rp ' + (qty * price).toLocaleString('id-ID') + '</td>'
                 + '<td class="text-center"><button type="button" class="btn btn-xs btn-danger btn-remove-extra"><i class="fa fa-times"></i></button></td>'
                 + '</tr>';
             $('#extra-tbody').append(row);
@@ -1192,7 +1365,7 @@ $(function () {
     $(document).on('click', '.btn-remove-extra', function () {
         $(this).closest('tr').remove();
         if ($('#extra-tbody tr').length === 0) {
-            $('#extra-tbody').append('<tr id="extra-empty-row"><td colspan="5" class="text-center text-muted" style="padding:14px">Belum ada barang ekstra ditambahkan.</td></tr>');
+            $('#extra-tbody').append('<tr id="extra-empty-row"><td colspan="7" class="text-center text-muted" style="padding:14px">Belum ada barang ekstra ditambahkan.</td></tr>');
         }
         recalcTotal();
     });
@@ -1232,19 +1405,31 @@ $(function () {
     $(document).on('input', 'input[name="qty_received[]"], .input-actual-price, #ongkir, #diskon-invoice', recalcTotal);
     $(document).on('change', 'input[name=ppn_mode]', recalcTotal);
 
-    // ── Mode Edit: harga List/Diskon % per baris item resi ini ──
+    // ── Mode Edit: harga List/Diskon %/PK per baris — SEMUA ditahan (tidak
+    // langsung tersimpan), cuma live preview di layar sampai "Simpan Semua
+    // Perubahan Harga" diklik. PK ikut dihitung ulang live mengikuti pola
+    // Create (recalcRowHargaList), kecuali baris itu di-override manual. ──
     function recalcRowFromHargaList($tr) {
         var $hargaList = $tr.find('.edit-harga-list');
         var $diskon    = $tr.find('.edit-diskon-persen');
         var $price     = $tr.find('.edit-price');
+        var $pk        = $tr.find('.edit-pk');
         var hargaList  = unformatRp($hargaList.val());
         var diskon     = parseFloat($diskon.val()) || 0;
+        var actual;
         if (hargaList > 0) {
-            var actual = Math.round(hargaList * (1 - diskon / 100));
+            actual = Math.round(hargaList * (1 - diskon / 100));
             $price.val(formatRp(String(actual))).prop('readonly', true);
         } else {
+            actual = unformatRp($price.val());
             $price.prop('readonly', false);
         }
+        if (!$pk.prop('disabled') && !$tr.data('pk-manual')) {
+            $pk.val(hargaList > 0
+                ? priceToK(String(actual)) + ' | PL ' + priceToK(String(hargaList))
+                : priceToK(String(actual)));
+        }
+        recalcTotalEdit();
     }
     $(document).on('input', '.edit-diskon-persen', function () {
         recalcRowFromHargaList($(this).closest('tr'));
@@ -1255,7 +1440,115 @@ $(function () {
     });
     $(document).on('input', '.edit-price', function () {
         $(this).val(formatRp($(this).val()));
+        $(this).closest('tr').data('pk-manual', false); // harga diketik ulang -> PK ikut auto lagi
+        recalcRowFromHargaList($(this).closest('tr'));
     });
+    $(document).on('input', '.edit-pk', function () {
+        $(this).val($(this).val().toUpperCase());
+        $(this).closest('tr').data('pk-manual', true);
+        recalcTotalEdit();
+    });
+    $(document).on('input', '.edit-qty', recalcTotalEdit);
+
+    // ── Live preview total Edit (Subtotal/Diskon/PPN/Total Utang) — mirip
+    // recalcTotal() di form Create, tapi baca dari tabel mode Edit & belum
+    // tersimpan apa-apa sampai "Simpan Semua Perubahan Harga" diklik. ──
+    function recalcTotalEdit() {
+        var subtotal = 0;
+        $('#edit-items-table tbody tr').each(function () {
+            var $tr    = $(this);
+            var qty    = parseInt($tr.find('.edit-qty').val()) || 0;
+            var price  = unformatRp($tr.find('.edit-price').val());
+            subtotal  += qty * price;
+        });
+
+        var diskonInvoice = unformatRp($('#inp-diskon-invoice').val());
+        var ppnMode       = $('input[name=inp-ppn-mode]:checked').val() || 'none';
+        var subtotalSetelahDiskon = subtotal - diskonInvoice;
+
+        var ppn = 0, totalUtang = subtotalSetelahDiskon;
+        if (ppnMode === 'add_distribute') {
+            ppn = Math.round(subtotalSetelahDiskon * (11 / 12) * 0.12);
+            totalUtang = subtotalSetelahDiskon + ppn;
+        } else if (ppnMode === 'inclusive') {
+            ppn = Math.round(subtotalSetelahDiskon * (0.11 / 1.11));
+            totalUtang = subtotalSetelahDiskon;
+        }
+
+        $('#edit-t-barang').text('Rp ' + subtotal.toLocaleString('id-ID'));
+        $('#edit-t-diskon').text('- Rp ' + diskonInvoice.toLocaleString('id-ID'));
+        $('#edit-lbl-ppn').text(ppnMode === 'inclusive' ? 'PPN (sudah termasuk harga beli, diekstrak)' : 'PPN (ditambah & didistribusi ke harga beli)');
+        $('#edit-t-ppn').text((ppnMode === 'add_distribute' ? '+ ' : '') + 'Rp ' + ppn.toLocaleString('id-ID'));
+        $('#edit-t-utang').text('Rp ' + totalUtang.toLocaleString('id-ID'));
+        $('#edit-row-diskon').toggle(diskonInvoice > 0);
+        $('#edit-row-ppn').toggle(ppnMode !== 'none');
+
+        var rowSubtotalSum = updateEditPpnPreview(ppnMode, diskonInvoice);
+        $('#grand-total-cell').text('Rp ' + rowSubtotalSum.toLocaleString('id-ID'));
+    }
+    $(document).on('input', '#inp-diskon-invoice', recalcTotalEdit);
+    $(document).on('change', 'input[name=inp-ppn-mode]', recalcTotalEdit);
+
+    // ── Preview per-baris "PPN / Harga Final / PK" — cuma tampil saat Mode
+    // PPN "ditambah & didistribusi" dipilih, readonly, murni informasi (nilai
+    // final sesungguhnya tetap dihitung ulang di server saat disimpan). Juga
+    // yang menghitung ulang kolom Subtotal per baris (qty × harga final: harga
+    // + PPN kalau mode add_distribute aktif, atau harga polos kalau tidak). ──
+    function updateEditPpnPreview(ppnMode, diskonInvoice) {
+        var show = ppnMode === 'add_distribute';
+        $('.ppn-prev-col').toggle(show);
+
+        var $allRows = $('#edit-items-table tbody tr');
+        var rowSubtotalSum = 0;
+
+        if (!show) {
+            $allRows.each(function () {
+                var $tr    = $(this);
+                var qty    = parseInt($tr.find('.edit-qty').val()) || 0;
+                var price  = unformatRp($tr.find('.edit-price').val());
+                $tr.find('.prev-ppn, .prev-harga-final, .prev-pk-final').val('');
+                var rowSubtotal = qty * price;
+                rowSubtotalSum += rowSubtotal;
+                $tr.find('.cell-subtotal').text('Rp ' + rowSubtotal.toLocaleString('id-ID'));
+            });
+            return rowSubtotalSum;
+        }
+
+        // baris qty 0 tidak ikut dihitung sama sekali (persis seperti server yang
+        // query WHERE qty_received > 0 di _redistribute_ppn) supaya baris terakhir
+        // yang benar-benar dapat "sisa pembulatan" cocok dengan hitungan server.
+        var rowsData = [], rowRefs = [];
+        $allRows.each(function () {
+            var $tr = $(this);
+            $tr.find('.prev-ppn, .prev-harga-final, .prev-pk-final').val('');
+            var qty = parseInt($tr.find('.edit-qty').val()) || 0;
+            if (qty <= 0) {
+                $tr.find('.cell-subtotal').text('Rp 0');
+                return;
+            }
+            rowsData.push({ qty: qty, price: unformatRp($tr.find('.edit-price').val()) });
+            rowRefs.push($tr);
+        });
+        var results = computePpnPreview(rowsData, diskonInvoice);
+        rowRefs.forEach(function ($tr, i) {
+            var r          = results[i];
+            var qty        = parseInt($tr.find('.edit-qty').val()) || 0;
+            var hargaList  = unformatRp($tr.find('.edit-harga-list').val());
+            var pkFinal;
+            if ($tr.data('pk-manual')) {
+                pkFinal = String($tr.find('.edit-pk').val() || '').toUpperCase();
+            } else {
+                pkFinal = priceToK(String(r.finalPrice)) + (hargaList > 0 ? ' | PL ' + priceToK(String(hargaList)) : '');
+            }
+            $tr.find('.prev-ppn').val('Rp ' + formatRp(String(r.ppnUnit)));
+            $tr.find('.prev-harga-final').val('Rp ' + formatRp(String(r.finalPrice)));
+            $tr.find('.prev-pk-final').val(pkFinal);
+            var rowSubtotal = qty * r.finalPrice;
+            rowSubtotalSum += rowSubtotal;
+            $tr.find('.cell-subtotal').text('Rp ' + rowSubtotal.toLocaleString('id-ID'));
+        });
+        return rowSubtotalSum;
+    }
 
     // ── Mode Edit: tambah item dari PO yang sama (sisa qty belum masuk resi ini) ──
     $('#sel-add-item').on('change', function () {
@@ -1342,8 +1635,10 @@ $(function () {
                         window.location.href = '<?= site_url('purchase-order/history') ?>';
                     }, 1500);
                 } else {
-                    $btn.closest('tr').fadeOut(300, function () { $(this).remove(); });
+                    // Reload (bukan cuma fade-out baris ini) karena hapus baris bisa memicu
+                    // redistribusi PPN di server yang menggeser harga baris LAIN juga.
                     toast('success', 'Baris berhasil dihapus.');
+                    setTimeout(function () { location.reload(); }, 700);
                 }
             }, 'json').fail(function () {
                 toast('error', 'Terjadi kesalahan.');
@@ -1352,79 +1647,67 @@ $(function () {
         });
     });
 
-    // ── Mode Edit: simpan qty/harga per baris ──
-    $(document).on('click', '.btn-save-row', function () {
-        var $tr        = $(this).closest('tr');
-        var detailId   = $tr.data('detail-id');
-        var $qtyInp    = $tr.find('.edit-qty');
-        var newQty     = parseInt($qtyInp.val()) || 0;
-        var maxQty     = parseInt($qtyInp.data('max')) || 0;
-        var newPrice   = unformatRp($tr.find('.edit-price').val());
-        var hargaList  = unformatRp($tr.find('.edit-harga-list').val());
-        var diskonPct  = $tr.find('.edit-diskon-persen').val();
-
-        if (newQty > maxQty) {
-            toast('warning', 'Qty melebihi jumlah yang dipesan (' + maxQty + ').');
-            $qtyInp.val(maxQty).focus();
-            return;
-        }
-
-        var $btn = $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
-        $.post('<?= site_url('purchase-order/history/update-detail') ?>', {
-            detail_id:      detailId,
-            qty_received:   newQty,
-            actual_price:   newPrice,
-            harga_list:     hargaList > 0 ? hargaList : '',
-            diskon_persen:  diskonPct || '',
-        }, function (res) {
-            $btn.prop('disabled', false).html('<i class="fa fa-save"></i> Simpan');
-            if (res.status !== 'success') {
-                toast('error', res.message || 'Gagal menyimpan.');
-                return;
-            }
-            toast('success', 'Disimpan.');
-            setTimeout(function () { location.reload(); }, 700);
-        }, 'json');
-    });
-
     // ── Mode Edit: Pengaturan Invoice (level 1 saja) ──
     $(document).on('input', '#inp-diskon-invoice, #inp-ongkir', function () {
         $(this).val(formatRp($(this).val()));
     });
-    $('#btn-save-invoice').on('click', function () {
-        var $btn = $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
-        $.post('<?= site_url('purchase-order/history/update-invoice') ?>', {
+
+    // Qty tiap baris + Harga tiap baris + Diskon Invoice + Ongkir + Mode PPN
+    // disimpan BARENG lewat satu tombol — full staging, semuanya ditahan di
+    // browser sampai diklik, baru diproses jadi SATU transaksi di server
+    // (kalau ada satu saja yang gagal, semuanya rollback, tidak ada partial save).
+    var $btnSavePrices = $('#btn-save-prices');
+    var btnSavePricesLabel = $btnSavePrices.html();
+    $btnSavePrices.on('click', function () {
+        var detailIds = [], qtys = [], prices = [], hargaLists = [], diskonPcts = [], pks = [];
+        var qtyError = null;
+        $('#edit-items-table tbody tr').each(function () {
+            var $tr    = $(this);
+            var $qtyInp = $tr.find('.edit-qty');
+            var newQty  = parseInt($qtyInp.val()) || 0;
+            var maxQty  = parseInt($qtyInp.data('max')) || 0;
+            if (maxQty > 0 && newQty > maxQty) {
+                qtyError = 'Qty melebihi jumlah yang dipesan (' + maxQty + ').';
+            }
+            detailIds.push($tr.data('detail-id'));
+            qtys.push(newQty);
+            prices.push(unformatRp($tr.find('.edit-price').val()));
+            hargaLists.push(unformatRp($tr.find('.edit-harga-list').val()) || '');
+            diskonPcts.push($tr.find('.edit-diskon-persen').val() || '');
+            pks.push($tr.data('pk-manual') ? $tr.find('.edit-pk').val() : '');
+        });
+
+        if (qtyError) {
+            toast('warning', qtyError);
+            return;
+        }
+
+        var $btn = $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Menyimpan...');
+        $.post('<?= site_url('purchase-order/history/update-prices') ?>', {
             receipt_id:      receiptId,
-            diskon_invoice:  $('#inp-diskon-invoice').val(),
-            ppn_mode:        $('input[name=inp-ppn-mode]:checked').val(),
+            detail_id:       detailIds,
+            qty_received:    qtys,
+            actual_price:    prices,
+            harga_list:      hargaLists,
+            diskon_persen:   diskonPcts,
+            pk_new:          pks,
+            supplier_invoice_no: $('#inp-invoice-no').length ? $('#inp-invoice-no').val() : '',
+            invoice_date:    $('#inp-invoice-date').length ? $('#inp-invoice-date').val() : '',
+            diskon_invoice:  $('#inp-diskon-invoice').length ? $('#inp-diskon-invoice').val() : '0',
+            ongkir:          $('#inp-ongkir').length ? $('#inp-ongkir').val() : '0',
+            ppn_mode:        $('input[name=inp-ppn-mode]:checked').val() || 'none',
         }, function (res) {
-            $btn.prop('disabled', false).html('<i class="fa fa-save"></i> Simpan Diskon & PPN');
+            $btn.prop('disabled', false).html(btnSavePricesLabel);
             if (res.status !== 'success') {
                 toast('error', res.message || 'Gagal menyimpan.');
                 return;
             }
-            toast('success', 'Diskon & PPN invoice berhasil disimpan.');
+            toast('success', 'Semua perubahan berhasil disimpan.');
             setTimeout(function () { location.reload(); }, 900);
-        }, 'json');
-    });
-    $('#btn-save-ongkir').on('click', function () {
-        var $btn = $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
-        $.post('<?= site_url('purchase-order/history/update-ongkir') ?>', {
-            receipt_id: receiptId,
-            ongkir:     $('#inp-ongkir').val(),
-        }, function (res) {
-            $btn.prop('disabled', false).html('<i class="fa fa-save"></i> Simpan Ongkir');
-            if (res.status !== 'success') {
-                toast('error', res.message || 'Gagal menyimpan.');
-                return;
-            }
-            if (res.unchanged) {
-                toast('success', 'Ongkir tidak berubah.');
-                return;
-            }
-            toast('success', 'Ongkir berhasil disimpan.');
-            setTimeout(function () { location.reload(); }, 900);
-        }, 'json');
+        }, 'json').fail(function () {
+            $btn.prop('disabled', false).html(btnSavePricesLabel);
+            toast('error', 'Terjadi kesalahan server.');
+        });
     });
 
     // ── Daftarkan Barang (item belum terdaftar — planned maupun ekstra) ──
@@ -1470,22 +1753,16 @@ $(function () {
                 Swal.fire({ icon: 'error', title: 'Gagal', text: res.message || 'Terjadi kesalahan.' });
                 return;
             }
-            // Naikkan saran barcode berikutnya biar item lain yang didaftarkan dalam
-            // sesi yang sama tidak disodori nomor yang sama (barcode harus unik).
-            nextBarcode = String(parseInt(nextBarcode, 10) + 1).padStart(5, '0');
-
-            // Update baris di tempat (bukan reload) supaya qty/harga yang lagi diisi
-            // di baris LAIN pada form ini tidak hilang.
-            var $row = $('#modal-register-item').data('trigger-row');
-            if ($row && $row.length) {
-                $row.find('.btn-register-item, .label-warning').remove();
-                $row.find('td:first').append('<br><span class="label label-success" style="font-size:10px"><i class="fa fa-check"></i> Terdaftar</span>');
-            }
             $('#modal-register-item').modal('hide');
             toast('success', 'Barang berhasil didaftarkan dan stok diupdate.');
+            // Reload penuh (bukan update baris di tempat) supaya bagian lain yang
+            // baca daftar item terdaftar — misalnya Print Barcode — ikut kebawa
+            // item baru ini tanpa perlu di-refresh manual.
+            setTimeout(function () { location.reload(); }, 900);
         }, 'json');
     });
 
     recalcTotal();
+    if (isEditMode) recalcTotalEdit();
 });
 </script>

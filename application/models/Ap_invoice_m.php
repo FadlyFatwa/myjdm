@@ -194,18 +194,18 @@ class Ap_invoice_m extends CI_Model {
         $receipt = $this->db->where('receipt_id', $receipt_id)->get('po_receipt')->row();
         if (!$receipt) return false;
 
-        // po_receipt.total_amount TIDAK otomatis ke-update oleh koreksi per-baris
-        // (update_receipt_detail/add_receipt_detail/add_receipt_extra_item/delete_receipt_detail)
-        // — cuma update_receipt_invoice() yang menulis ulang kolom itu. Jadi hitung ulang
-        // live dari po_detail saat ini, sama persis formula yang dipakai tampilan
-        // (receiving_history_detail.php / po_receive.php mode edit).
+        // Hitung ulang live dari po_detail saat ini (Penerimaan::_redistribute_ppn() sudah
+        // menulis ulang po_receipt.ppn_nominal/total_amount & actual_price tiap ada koreksi
+        // baris, tapi disini dihitung ulang independen dari sumbernya langsung supaya tetap
+        // benar walau dipanggil dari alur lain). actual_price SUDAH termasuk porsi PPN kalau
+        // ppn_mode='add_distribute' (didistribusi oleh receive()/Penerimaan::_redistribute_ppn()),
+        // jadi jangan tambah ppn_nominal lagi di sini — itu akan menghitung PPN dua kali.
         $subtotal_row = $this->db->query(
             "SELECT COALESCE(SUM(qty_received * actual_price), 0) AS subtotal FROM po_detail WHERE receipt_id = ?",
             [$receipt_id]
         )->row();
         $subtotal = (int) $subtotal_row->subtotal;
-        $new_amount = $subtotal - (int) $receipt->diskon_invoice
-            + ($receipt->ppn_mode === 'add_distribute' ? (int) $receipt->ppn_nominal : 0);
+        $new_amount = $subtotal - (int) $receipt->diskon_invoice;
 
         if ($new_amount === (int) $ap->amount) return false;
 

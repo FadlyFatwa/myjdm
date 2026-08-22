@@ -10,7 +10,7 @@ class Report_ar extends CI_Controller {
     {
         parent::__construct();
         check_not_login();
-        check_allowed_levels([1, 2, 3]);
+        check_allowed_levels([1, 2]);
         $this->load->model('Report_ar_m');
         $this->load->model('customer_m');
     }

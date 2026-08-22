@@ -7,6 +7,7 @@ class Whatsapp
     protected $token;
     protected $group_id;
     protected $stock_group_id;
+    protected $temp_item_group_id;
     protected $enabled;
     protected $api_url = 'https://api.fonnte.com/send';
 
@@ -15,10 +16,11 @@ class Whatsapp
         $this->CI =& get_instance();
         $this->CI->config->load('whatsapp', TRUE);
 
-        $this->token          = $this->CI->config->item('wa_token', 'whatsapp');
-        $this->group_id       = $this->CI->config->item('wa_group_id', 'whatsapp');
-        $this->stock_group_id = $this->CI->config->item('wa_stock_group_id', 'whatsapp');
-        $this->enabled        = $this->CI->config->item('wa_enabled', 'whatsapp');
+        $this->token              = $this->CI->config->item('wa_token', 'whatsapp');
+        $this->group_id           = $this->CI->config->item('wa_group_id', 'whatsapp');
+        $this->stock_group_id     = $this->CI->config->item('wa_stock_group_id', 'whatsapp');
+        $this->temp_item_group_id = $this->CI->config->item('wa_temp_item_group_id', 'whatsapp');
+        $this->enabled            = $this->CI->config->item('wa_enabled', 'whatsapp');
     }
 
     /**
@@ -60,6 +62,25 @@ class Whatsapp
         }
 
         return $this->send_to_group($message, $this->stock_group_id);
+    }
+
+    /**
+     * Kirim pesan ke grup reminder barang sementara (perlu dicek & didaftarkan jadi item resmi)
+     *
+     * @param string $message
+     * @return array ['success' => bool, 'response' => array]
+     */
+    public function send_to_temp_item_group(string $message): array
+    {
+        if (!$this->enabled) {
+            return ['success' => false, 'response' => ['reason' => 'WA disabled']];
+        }
+
+        if (empty($this->temp_item_group_id)) {
+            return ['success' => false, 'response' => ['reason' => 'Grup WA barang sementara belum dikonfigurasi']];
+        }
+
+        return $this->send_to_group($message, $this->temp_item_group_id);
     }
 
     /**

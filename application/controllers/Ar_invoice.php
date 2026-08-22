@@ -7,7 +7,7 @@ class Ar_invoice extends CI_Controller {
     {
         parent::__construct();
         check_not_login();
-        check_allowed_levels([1, 2, 3]);
+        check_allowed_levels([1, 2]);
         $this->load->model('Ar_invoice_m');
         $this->load->model('Coa_m');
         $this->load->model('customer_m');

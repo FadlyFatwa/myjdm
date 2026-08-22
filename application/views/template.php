@@ -683,9 +683,9 @@ $seg2 = $this->uri->segment(2) ?? '';
             <?php endif; ?>
 
             <!-- FINANCE -->
-            <?php if(in_array($level, [1,2,3])): ?>
+            <?php if(in_array($level, [1,2])): ?>
             <li class="header">FINANCE</li>
-            <li class="treeview <?= in_array($seg1, ['coa','journal','ar-invoice','ar-payment','kontra-bon','kontra-bon-payment','report-ar','ap-invoice','ap-payment','ap-kontra-bon','ap-kontra-bon-payment','report-ap','beban']) ? 'active menu-open' : '' ?>">
+            <li class="treeview <?= in_array($seg1, ['coa','journal','ar-invoice','ar-payment','kontra-bon','kontra-bon-payment','pembayaran-masuk','report-ar','ap-invoice','ap-payment','ap-kontra-bon','ap-kontra-bon-payment','pembayaran-keluar','report-ap','beban']) ? 'active menu-open' : '' ?>">
                 <a href="#">
                     <i class="fa fa-money text-green"></i>
                     <span>Finance</span>
@@ -694,7 +694,7 @@ $seg2 = $this->uri->segment(2) ?? '';
                     </span>
                 </a>
                 <ul class="treeview-menu">
-                    <li class="treeview <?= in_array($seg1, ['ar-invoice','ar-payment','kontra-bon','kontra-bon-payment','report-ar']) ? 'active menu-open' : '' ?>">
+                    <li class="treeview <?= in_array($seg1, ['ar-invoice','ar-payment','kontra-bon','kontra-bon-payment','pembayaran-masuk','report-ar']) ? 'active menu-open' : '' ?>">
                         <a href="#">
                             <i class="fa fa-file-text-o text-blue"></i> Piutang
                             <span class="pull-right-container">
@@ -712,6 +712,11 @@ $seg2 = $this->uri->segment(2) ?? '';
                                     <i class="fa fa-circle-o"></i> Kontra Bon
                                 </a>
                             </li>
+                            <li <?= $seg1 == 'pembayaran-masuk' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('pembayaran-masuk') ?>">
+                                    <i class="fa fa-circle-o"></i> Pembayaran Masuk
+                                </a>
+                            </li>
                             <li <?= $seg1 == 'report-ar' ? 'class="active"' : '' ?>>
                                 <a href="<?= site_url('report-ar') ?>">
                                     <i class="fa fa-circle-o"></i> Laporan Piutang
@@ -719,7 +724,7 @@ $seg2 = $this->uri->segment(2) ?? '';
                             </li>
                         </ul>
                     </li>
-                    <li class="treeview <?= in_array($seg1, ['ap-invoice','ap-payment','ap-kontra-bon','ap-kontra-bon-payment','report-ap']) ? 'active menu-open' : '' ?>">
+                    <li class="treeview <?= in_array($seg1, ['ap-invoice','ap-payment','ap-kontra-bon','ap-kontra-bon-payment','pembayaran-keluar','report-ap']) ? 'active menu-open' : '' ?>">
                         <a href="#">
                             <i class="fa fa-file-text text-red"></i> Hutang
                             <span class="pull-right-container">
@@ -735,6 +740,11 @@ $seg2 = $this->uri->segment(2) ?? '';
                             <li <?= $seg1 == 'ap-kontra-bon' ? 'class="active"' : '' ?>>
                                 <a href="<?= site_url('ap-kontra-bon') ?>">
                                     <i class="fa fa-circle-o"></i> Kontra Bon Hutang
+                                </a>
+                            </li>
+                            <li <?= $seg1 == 'pembayaran-keluar' ? 'class="active"' : '' ?>>
+                                <a href="<?= site_url('pembayaran-keluar') ?>">
+                                    <i class="fa fa-circle-o"></i> Pembayaran Keluar
                                 </a>
                             </li>
                             <li <?= $seg1 == 'report-ap' ? 'class="active"' : '' ?>>
@@ -807,7 +817,7 @@ $seg2 = $this->uri->segment(2) ?? '';
             <?php if(in_array($level, [1,2,3])): ?>
             <li class="header">REPORTS</li>
 
-            <li class="treeview <?= in_array($seg1, ['report','report_tax']) ? 'active menu-open' : '' ?>">
+            <li class="treeview <?= in_array($seg1, ['report','report_tax','report-purchase','report-beban']) ? 'active menu-open' : '' ?>">
                 <a href="#">
                     <i class="fa fa-file-text-o"></i>
                     <span>
@@ -831,6 +841,20 @@ $seg2 = $this->uri->segment(2) ?? '';
                             <i class="fa fa-circle-o"></i> Detail Transaksi
                         </a>
                     </li>
+
+                    <?php if(in_array($level, [1,2])): ?>
+                    <li <?= $seg1 == 'report-purchase' ? 'class="active"' : '' ?>>
+                        <a href="<?= site_url('report-purchase') ?>">
+                            <i class="fa fa-circle-o"></i> Pembelian
+                        </a>
+                    </li>
+
+                    <li <?= $seg1 == 'report-beban' ? 'class="active"' : '' ?>>
+                        <a href="<?= site_url('report-beban') ?>">
+                            <i class="fa fa-circle-o"></i> Operasional
+                        </a>
+                    </li>
+                    <?php endif; ?>
 
                     <?php if($level == 1): ?>
                     <li class="treeview <?= $seg1 == 'report_tax' ? 'active menu-open' : '' ?>">

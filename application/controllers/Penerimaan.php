@@ -14,13 +14,13 @@ class Penerimaan extends CI_Controller {
         $this->load->library('whatsapp');
     }
 
-    private function _update_item_price($item_id, $supplier_id, $new_price, $source = 'po_receipt', $source_id = null, $harga_list = null)
+    private function _update_item_price($item_id, $supplier_id, $new_price, $source = 'po_receipt', $source_id = null, $harga_list = null, $manual_pk = null)
     {
         $item = $this->db->where('item_id', $item_id)->get('p_item')->row();
         if (!$item || $new_price <= 0) return;
-        if ((int) $item->modal === $new_price) return; // tidak berubah
 
-        $new_pk = $this->fungsi->build_pk($new_price, $harga_list, null);
+        $new_pk = $this->fungsi->build_pk($new_price, $harga_list, $manual_pk);
+        if ((int) $item->modal === $new_price && $new_pk === $item->pk) return; // tidak ada yang berubah
 
         // Update p_item
         $this->db->where('item_id', $item_id)->update('p_item', [
@@ -41,16 +41,106 @@ class Penerimaan extends CI_Controller {
             ]);
         }
 
+        // Harga pembanding untuk log: default-nya harga saat ini (item->modal). Tapi kalau
+        // ini KOREKSI dari PO/resi yang sama (source_id sama) yang sebelumnya sudah pernah
+        // ubah harga item ini (misal salah input, dikoreksi lagi), pakai harga SEBELUM PO ini
+        // pernah menyentuh item ini sama sekali (dari log paling awal) -- supaya naik/turun
+        // yang tercatat mencerminkan efek bersih dari seluruh proses penerimaan ini, bukan
+        // dibandingkan ke input yang salah dan baru saja dikoreksi.
+        $harga_lama_log = (int) $item->modal;
+        if ($source_id) {
+            $earliest = $this->db
+                ->where('item_id', $item_id)
+                ->where('sumber', $source)
+                ->where('sumber_id', $source_id)
+                ->order_by('id', 'ASC')
+                ->limit(1)
+                ->get('harga_log')->row();
+            if ($earliest) {
+                $harga_lama_log = (int) $earliest->harga_lama;
+            }
+        }
+
         // Log perubahan harga
         $this->po_m->log_price_change([
             'item_id'     => $item_id,
             'supplier_id' => $supplier_id,
-            'harga_lama'  => (int) $item->modal,
+            'harga_lama'  => $harga_lama_log,
             'harga_baru'  => $new_price,
             'sumber'      => $source,
             'sumber_id'   => $source_id,
             'catatan'     => 'Koreksi GR',
             'changed_by'  => (int) $this->session->userdata('userid'),
+        ]);
+    }
+
+    /**
+     * Hitung ulang distribusi PPN ke actual_price SEMUA baris resi ini, HANYA
+     * kalau ppn_mode='add_distribute'. Dipanggil ulang tiap ada perubahan yang
+     * menggeser subtotal (edit baris, tambah ekstra, hapus baris) supaya porsi
+     * PPN tiap baris tetap proporsional terhadap subtotal terkini. Basisnya
+     * actual_price yang SUDAH tersimpan (bisa jadi sudah termasuk distribusi
+     * PPN dari perubahan sebelumnya) -- diterima sebagai trade-off karena staff
+     * selalu cross-check "Total Utang" vs nota fisik tiap simpan (1 nota
+     * supplier = 1 resi, jadi perbandingannya selalu jelas & langsung).
+     * Juga menulis ulang po_receipt.ppn_nominal/total_amount supaya konsisten
+     * dengan actual_price baru, tanpa perlu klik "Simpan Pengaturan Invoice"
+     * terpisah. $manual_pk_by_detail_id (opsional): [po_detail.id => PK manual]
+     * untuk baris yang PK-nya di-override manual oleh user — tetap dihormati
+     * meski harganya ikut bergeser karena redistribusi.
+     */
+    private function _redistribute_ppn($receipt_id, $manual_pk_by_detail_id = [])
+    {
+        $receipt = $this->db->where('receipt_id', $receipt_id)->get('po_receipt')->row();
+        if (!$receipt || $receipt->ppn_mode !== 'add_distribute') return;
+
+        $rows = $this->db->where('receipt_id', $receipt_id)->where('qty_received >', 0)->get('po_detail')->result();
+        if (empty($rows)) return;
+
+        $subtotal = 0;
+        foreach ($rows as $r) {
+            $subtotal += (int) $r->qty_received * (float) $r->actual_price;
+        }
+        if ($subtotal <= 0) return;
+
+        $subtotal_setelah_diskon = $subtotal - (int) $receipt->diskon_invoice;
+        $ppn_nominal = $this->fungsi->hitung_ppn_tambah($subtotal_setelah_diskon);
+
+        $po = $this->db->where('po_id', $receipt->po_id)->get('po_header')->row();
+        $new_subtotal = $subtotal;
+
+        if ($ppn_nominal > 0) {
+            $count         = count($rows);
+            $remaining_ppn = $ppn_nominal;
+            $new_subtotal  = 0;
+            foreach ($rows as $i => $r) {
+                $row_subtotal = (int) $r->qty_received * (float) $r->actual_price;
+                if ($i === $count - 1) {
+                    $row_ppn_share = $remaining_ppn;
+                } else {
+                    $row_ppn_share = (int) round($ppn_nominal * ($row_subtotal / $subtotal));
+                    $remaining_ppn -= $row_ppn_share;
+                }
+                $new_price = (int) round($r->actual_price + ($r->qty_received > 0 ? $row_ppn_share / $r->qty_received : 0));
+                $manual_pk = $manual_pk_by_detail_id[$r->id] ?? null;
+
+                if ($new_price !== (int) $r->actual_price) {
+                    $this->db->where('id', $r->id)->update('po_detail', ['actual_price' => $new_price]);
+                }
+                if ($r->item_id && $po && ($new_price !== (int) $r->actual_price || $manual_pk)) {
+                    $this->_update_item_price($r->item_id, $po->supplier_id, $new_price, 'po_receipt', $receipt->po_id, $r->harga_list, $manual_pk);
+                }
+                $new_subtotal += (int) $r->qty_received * $new_price;
+            }
+        }
+
+        // total_amount dari subtotal PASCA redistribusi (actual_price di tiap baris SUDAH
+        // termasuk porsi PPN-nya) dikurangi diskon invoice — BUKAN subtotal_setelah_diskon +
+        // ppn_nominal, karena itu akan menghitung PPN dua kali (sudah menempel di actual_price).
+        $this->db->where('receipt_id', $receipt_id)->update('po_receipt', [
+            'ppn_persen'   => 11.00,
+            'ppn_nominal'  => $ppn_nominal,
+            'total_amount' => (int) round($new_subtotal - (int) $receipt->diskon_invoice),
         ]);
     }
 
@@ -279,6 +369,21 @@ class Penerimaan extends CI_Controller {
             return;
         }
 
+        // Cara Bayar & PPN wajib dipilih manual (tidak ada default) supaya user benar-benar
+        // mengecek, bukan cuma lolos lewat nilai bawaan yang belum tentu sesuai transaksi ini.
+        $payment_type = $this->input->post('payment_type');
+        if (!in_array($payment_type, ['cash', 'credit'], true)) {
+            $this->session->set_flashdata('error', 'Cara Bayar Barang wajib dipilih (Kredit/Cash).');
+            redirect('purchase-order/receive/' . $po_id);
+            return;
+        }
+        $ppn_mode = $this->input->post('ppn_mode');
+        if (!in_array($ppn_mode, ['none', 'add_distribute', 'inclusive'], true)) {
+            $this->session->set_flashdata('error', 'PPN wajib dipilih salah satu opsinya.');
+            redirect('purchase-order/receive/' . $po_id);
+            return;
+        }
+
         // Tahap 1 — hitung harga bersih per baris (harga_list-diskon, belum termasuk PPN).
         // Kalau harga_list diisi, actual_price yang dikirim client diabaikan & dihitung ulang
         // di server supaya tidak bisa dimanipulasi dari luar.
@@ -316,8 +421,6 @@ class Penerimaan extends CI_Controller {
         //   'inclusive'      — harga yang diketik SUDAH termasuk PPN; PPN diekstrak dari
         //                      subtotal cuma buat catatan, harga beli & total TIDAK berubah.
         $diskon_invoice = (int) str_replace('.', '', $this->input->post('diskon_invoice'));
-        $ppn_mode       = $this->input->post('ppn_mode');
-        if (!in_array($ppn_mode, ['none', 'add_distribute', 'inclusive'], true)) $ppn_mode = 'none';
 
         $subtotal_setelah_diskon = $subtotal - $diskon_invoice;
 
@@ -362,6 +465,8 @@ class Penerimaan extends CI_Controller {
         $receive_date         = $this->input->post('receive_date') ?: date('Y-m-d');
         $ongkir = (int) str_replace('.', '', $this->input->post('ongkir'));
 
+        $this->db->trans_start();
+
         $this->db->insert('po_receipt', [
             'po_id'                 => $po_id,
             'supplier_invoice_no'   => $supplier_invoice_no,
@@ -381,6 +486,7 @@ class Penerimaan extends CI_Controller {
         if (!$receipt_id) {
             // Jangan lanjut catat ongkir/stok kalau po_receipt sendiri gagal
             // disimpan -- nanti stok & jurnal ongkir jalan tanpa riwayat penerimaannya.
+            $this->db->trans_complete();
             $this->session->set_flashdata('error', 'Penerimaan barang gagal disimpan, silakan coba lagi.');
             redirect('purchase-order/' . $po_id);
             return;
@@ -388,10 +494,8 @@ class Penerimaan extends CI_Controller {
 
         // Hutang ke supplier — dicatat untuk SEMUA penerimaan (kredit maupun cash) supaya
         // konsisten muncul di Kartu Hutang; kalau cash, langsung dilunasi penuh saat itu
-        // juga lewat Ap_invoice_m::create_from_receipt() (lihat method tsb).
-        $payment_type = $this->input->post('payment_type');
-        if (!in_array($payment_type, ['cash', 'credit'], true)) $payment_type = 'credit';
-
+        // juga lewat Ap_invoice_m::create_from_receipt() (lihat method tsb). $payment_type
+        // sudah divalidasi & pasti 'cash'/'credit' di awal method.
         if ($total_amount > 0) {
             $this->load->model('Ap_invoice_m');
             $receipt_row = (object) [
@@ -539,6 +643,14 @@ class Penerimaan extends CI_Controller {
         // (source=new) tidak lewat receive_detail() untuk pembuatan itemnya, jadi status
         // PO dihitung ulang sekali lagi di sini supaya tetap akurat.
         $this->po_m->recalc_status($po_id);
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            $this->session->set_flashdata('error', 'Penerimaan barang gagal disimpan, silakan coba lagi.');
+            redirect('purchase-order/receive/' . $po_id);
+            return;
+        }
 
         $this->session->set_flashdata('success', 'Penerimaan barang berhasil dicatat.');
         redirect('purchase-order/history/' . $receipt_id);
@@ -788,6 +900,26 @@ class Penerimaan extends CI_Controller {
             ->where('po_detail.receipt_id', (int) $receipt_id)
             ->get()->result();
 
+        // Kalau mode PPN resi ini saat ini "ditambah & didistribusi", actual_price yang
+        // tersimpan SUDAH termasuk porsi PPN dari redistribusi terakhir. Supaya form Edit
+        // tidak membingungkan (dan supaya edit berulang tidak menumpuk PPN di atas PPN),
+        // tampilkan & jadikan titik-mula edit adalah harga BERSIH sebelum PPN — diekstrak
+        // pakai formula yang sama dengan mode 'inclusive' (11/12 × 12%) — bukan harga
+        // mentah yang tersimpan. PK awal ikut dihitung ulang dari harga bersih ini supaya
+        // konsisten dengan harga yang ditampilkan.
+        if ($receipt->ppn_mode === 'add_distribute') {
+            foreach ($items as $it) {
+                $price = (int) $it->actual_price;
+                if ($price > 0) {
+                    $net_price = $price - $this->fungsi->hitung_ppn_ekstrak($price);
+                    $it->actual_price = $net_price;
+                    if ($it->item_id) {
+                        $it->item_pk = $this->fungsi->build_pk($net_price, $it->harga_list);
+                    }
+                }
+            }
+        }
+
         // Item dari PO yang sama, belum masuk receipt ini, masih ada sisa qty
         $available_items = $this->db->query(
             "SELECT pd.id, pd.qty_ordered, pd.qty_received, pd.unit_price,
@@ -879,144 +1011,13 @@ class Penerimaan extends CI_Controller {
         echo json_encode(['status' => 'success', 'already_labeled' => false]);
     }
 
-    public function update_receipt_detail()
-    {
-        if ($this->input->method() !== 'post') show_404();
-
-        $detail_id    = (int) $this->input->post('detail_id');
-        $new_qty      = (int) $this->input->post('qty_received');
-        $new_price    = (int) str_replace('.', '', $this->input->post('actual_price'));
-        $harga_list_in = $this->input->post('harga_list');
-        $diskon_in     = $this->input->post('diskon_persen');
-        $harga_list    = ($harga_list_in !== null && $harga_list_in !== '') ? (float) str_replace('.', '', $harga_list_in) : null;
-        $diskon_persen = ($diskon_in !== null && $diskon_in !== '') ? (float) $diskon_in : null;
-
-        // Kalau harga list diisi, harga aktual dihitung ulang di server (abaikan
-        // yang dikirim client) — sama seperti Tahap 1 di receive().
-        if ($harga_list !== null && $harga_list > 0) {
-            $new_price = (int) round($harga_list * (1 - ($diskon_persen ?: 0) / 100));
-        }
-
-        if ($detail_id < 1 || $new_qty < 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Data tidak valid.']);
-            return;
-        }
-
-        $detail = $this->db->where('id', $detail_id)->get('po_detail')->row();
-        if (!$detail) {
-            echo json_encode(['status' => 'error', 'message' => 'Detail tidak ditemukan.']);
-            return;
-        }
-
-        // qty_ordered=0 menandai baris "ekstra" (di luar rencana PO) — tidak ada
-        // batas atas order buat baris ini, jadi lewati pengecekan batas.
-        if ((int) $detail->qty_ordered > 0 && $new_qty > (int) $detail->qty_ordered) {
-            echo json_encode(['status' => 'error', 'message' => 'Qty tidak boleh melebihi qty order (' . $detail->qty_ordered . ').']);
-            return;
-        }
-
-        $old_qty  = (int) $detail->qty_received;
-        $qty_diff = $new_qty - $old_qty;
-
-        if ($detail->item_id && $qty_diff !== 0) {
-            // Koreksi p_item.stock
-            $this->db->set('stock', "stock + ($qty_diff)", false)
-                     ->where('item_id', $detail->item_id)
-                     ->update('p_item');
-
-            // Hapus entry t_stock lama pakai po_detail_id, ganti dengan qty baru
-            $po = $this->db->where('po_id', $detail->po_id)->get('po_header')->row();
-            $this->db->where('po_detail_id', $detail_id)->delete('t_stock');
-
-            if ($new_qty > 0 && $po) {
-                $this->db->insert('t_stock', [
-                    'item_id'      => (int) $detail->item_id,
-                    'type'         => 'in',
-                    'supplier_id'  => (int) $po->supplier_id,
-                    'po_detail_id' => $detail_id,
-                    'qty'          => $new_qty,
-                    'date'         => date('Y-m-d'),
-                    'detail'       => 'Goods Receipt ' . ($po->po_number ?? ''),
-                    'created_at'   => date('Y-m-d H:i:s'),
-                    'updated_at'   => date('Y-m-d H:i:s'),
-                ]);
-            }
-        }
-
-        // Update po_detail
-        $update = ['qty_received' => $new_qty];
-        if ($new_price > 0) $update['actual_price'] = $new_price;
-        if ($harga_list !== null) {
-            $update['harga_list']    = $harga_list > 0 ? $harga_list : null;
-            $update['diskon_persen'] = $diskon_persen;
-        }
-        $this->db->where('id', $detail_id)->update('po_detail', $update);
-
-        // Update harga beli item jika berubah
-        if ($detail->item_id && $new_price > 0 && $new_price !== (int) $detail->actual_price) {
-            $po = $this->db->where('po_id', $detail->po_id)->get('po_header')->row();
-            if ($po) $this->_update_item_price($detail->item_id, $po->supplier_id, $new_price, 'po_receipt', $detail->po_id, $harga_list);
-        }
-
-        // Recalculate po_header status
-        $po_id   = $detail->po_id;
-        $details = $this->db->select('qty_ordered, qty_received')->where('po_id', $po_id)->get('po_detail')->result();
-        $total_ordered  = array_sum(array_column((array)$details, 'qty_ordered'));
-        $total_received = array_sum(array_column((array)$details, 'qty_received'));
-
-        if ($total_received <= 0) {
-            $new_status = 'sent';
-        } elseif ($total_received >= $total_ordered) {
-            $new_status = 'received';
-        } else {
-            $new_status = 'partial';
-        }
-        $this->db->where('po_id', $po_id)->update('po_header', ['status' => $new_status]);
-
-        $price_diff = $new_price > 0 ? $new_price - (int) $detail->actual_price : 0;
-        if ($qty_diff !== 0 || $price_diff !== 0) {
-            $po       = $this->_po_supplier_info($po_id);
-            $item_nm  = $detail->item_id
-                ? ($this->db->where('item_id', $detail->item_id)->get('p_item')->row()->nama_item ?? null)
-                : null;
-            $item_nm  = $item_nm ?? $detail->item_name_temp ?? 'Item';
-            $actor    = $this->fungsi->user_login()->nama ?? '-';
-
-            $lines = [
-                "✏️ *KOREKSI PENERIMAAN*",
-                "━━━━━━━━━━━━━━",
-                "📋 No. PO   : " . ($po->po_number ?? '-'),
-                "🏭 Supplier : " . ($po->nama_supplier ?? '-'),
-                "📦 Item     : {$item_nm}",
-                "🔢 Qty      : {$old_qty} → {$new_qty}",
-            ];
-            if ($price_diff !== 0) {
-                $lines[] = "💰 Harga    : Rp " . number_format((int) $detail->actual_price, 0, ',', '.')
-                    . " → Rp " . number_format($new_price, 0, ',', '.');
-            }
-            $lines[] = "👤 Diubah   : {$actor}";
-            $lines[] = "🕐 Waktu    : " . date('d/m/Y H:i');
-            $lines[] = "━━━━━━━━━━━━━━";
-            $lines[] = "_Notifikasi otomatis dari sistem myjdm_";
-
-            $this->_send_wa_notif(implode("\n", $lines), 'koreksi detail_id ' . $detail_id);
-        }
-
-        $ap_synced = false;
-        if ($detail->receipt_id) {
-            $this->load->model('Ap_invoice_m');
-            $ap_synced = $this->Ap_invoice_m->sync_amount_from_receipt($detail->receipt_id);
-        }
-
-        echo json_encode([
-            'status'      => 'success',
-            'new_qty'     => $new_qty,
-            'qty_diff'    => $qty_diff,
-            'po_status'   => $new_status,
-            'ap_synced'   => $ap_synced,
-        ]);
-    }
-
+    /**
+     * Simpan qty per baris — TIDAK menyentuh harga (harga_list/diskon_persen/
+     * actual_price/PK ditangani terpisah, ditahan dulu di browser sampai
+     * "Simpan Semua Perubahan Harga" diklik, lihat update_receipt_prices()).
+     * Qty sengaja tetap langsung tersimpan per baris (real-time) karena
+     * langsung mempengaruhi stok — beda dari harga yang tidak butuh real-time.
+     */
     public function delete_receipt($receipt_id)
     {
         if ($this->input->method() !== 'post') show_404();
@@ -1046,6 +1047,8 @@ class Penerimaan extends CI_Controller {
                     . ' - ' . $d->qty_received . ' ' . ($d->nama_unit ?? '');
             }
         }
+
+        $this->db->trans_start();
 
         // Kembalikan stok untuk item yang qty_received > 0
         foreach ($details as $d) {
@@ -1089,6 +1092,13 @@ class Penerimaan extends CI_Controller {
 
         $new_status = $total_received > 0 ? 'partial' : 'sent';
         $this->db->where('po_id', $po_id)->update('po_header', ['status' => $new_status]);
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            echo json_encode(['status' => 'error', 'message' => 'Gagal membatalkan penerimaan, silakan coba lagi.']);
+            return;
+        }
 
         $po_info = $this->_po_supplier_info($po_id);
         $actor   = $this->fungsi->user_login()->nama ?? '-';
@@ -1147,6 +1157,8 @@ class Penerimaan extends CI_Controller {
 
         $final_price = $actual_price ?: (int) $detail->unit_price;
 
+        $this->db->trans_start();
+
         // Update po_detail
         $this->db->where('id', $po_detail_id)->update('po_detail', [
             'qty_received' => $detail->qty_received + $qty,
@@ -1185,6 +1197,17 @@ class Penerimaan extends CI_Controller {
         $new_status = $total_received >= $total_ordered ? 'received' : 'partial';
         $this->db->where('po_id', $detail->po_id)->update('po_header', ['status' => $new_status]);
 
+        $this->_redistribute_ppn($receipt_id);
+        $this->load->model('Ap_invoice_m');
+        $ap_synced = $this->Ap_invoice_m->sync_amount_from_receipt($receipt_id);
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            echo json_encode(['status' => 'error', 'message' => 'Gagal menambah item, silakan coba lagi.']);
+            return;
+        }
+
         $item_row = $detail->item_id ? $this->db->where('item_id', $detail->item_id)->get('p_item')->row() : null;
         $unit_row = $item_row && $item_row->unit_id ? $this->db->where('unit_id', $item_row->unit_id)->get('p_unit')->row() : null;
         $item_nm  = ($item_row->nama_item ?? null) ?? $detail->item_name_temp ?? 'Item';
@@ -1203,9 +1226,6 @@ class Penerimaan extends CI_Controller {
             "_Notifikasi otomatis dari sistem myjdm_",
         ];
         $this->_send_wa_notif(implode("\n", $lines), 'tambah item receipt_id ' . $receipt_id);
-
-        $this->load->model('Ap_invoice_m');
-        $ap_synced = $this->Ap_invoice_m->sync_amount_from_receipt($receipt_id);
 
         echo json_encode(['status' => 'success', 'ap_synced' => $ap_synced]);
     }
@@ -1234,11 +1254,17 @@ class Penerimaan extends CI_Controller {
             echo json_encode(['status' => 'error', 'message' => 'PO tidak ditemukan.']);
             return;
         }
+        if (!in_array($source, ['existing', 'new'], true)) {
+            echo json_encode(['status' => 'error', 'message' => 'Sumber item tidak valid.']);
+            return;
+        }
 
         $harga_list_in = $this->input->post('harga_list');
         $diskon_in     = $this->input->post('diskon_persen');
         $harga_list    = ($harga_list_in !== null && $harga_list_in !== '') ? (float) str_replace('.', '', $harga_list_in) : null;
         $diskon_persen = ($diskon_in !== null && $diskon_in !== '') ? (float) $diskon_in : null;
+
+        $this->db->trans_start();
 
         if ($source === 'existing') {
             $item_id = (int) $this->input->post('item_id');
@@ -1308,8 +1334,16 @@ class Penerimaan extends CI_Controller {
 
             $item_nm = $nama_item;
             $unit_nm = '';
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Sumber item tidak valid.']);
+        }
+
+        $this->_redistribute_ppn($receipt_id);
+        $this->load->model('Ap_invoice_m');
+        $ap_synced = $this->Ap_invoice_m->sync_amount_from_receipt($receipt_id);
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            echo json_encode(['status' => 'error', 'message' => 'Gagal menambah barang, silakan coba lagi.']);
             return;
         }
 
@@ -1327,9 +1361,6 @@ class Penerimaan extends CI_Controller {
             "_Notifikasi otomatis dari sistem myjdm_",
         ];
         $this->_send_wa_notif(implode("\n", $lines), 'tambah barang ekstra receipt_id ' . $receipt_id);
-
-        $this->load->model('Ap_invoice_m');
-        $ap_synced = $this->Ap_invoice_m->sync_amount_from_receipt($receipt_id);
 
         echo json_encode(['status' => 'success', 'ap_synced' => $ap_synced]);
     }
@@ -1353,6 +1384,8 @@ class Penerimaan extends CI_Controller {
         $item_nm  = ($item_row->nama_item ?? null) ?? $detail->item_name_temp ?? 'Item';
         $actor    = $this->fungsi->user_login()->nama ?? '-';
         $po_info  = $this->_po_supplier_info($detail->po_id);
+
+        $this->db->trans_start();
 
         // Jika ada qty yang sudah diterima → reverse stok + hapus entry t_stock pakai po_detail_id
         if ($old_qty > 0 && $detail->item_id) {
@@ -1397,6 +1430,13 @@ class Penerimaan extends CI_Controller {
             // Tidak ada item yang diterima → hapus receipt header
             $this->db->where('receipt_id', $receipt_id)->delete('po_receipt');
 
+            $this->db->trans_complete();
+
+            if ($this->db->trans_status() === FALSE) {
+                echo json_encode(['status' => 'error', 'message' => 'Gagal menghapus item, silakan coba lagi.']);
+                return;
+            }
+
             $lines = [
                 "❌ *PEMBATALAN PENERIMAAN*",
                 "━━━━━━━━━━━━━━",
@@ -1430,6 +1470,17 @@ class Penerimaan extends CI_Controller {
         }
         $this->db->where('po_id', $po_id)->update('po_header', ['status' => $new_status]);
 
+        $this->_redistribute_ppn($receipt_id);
+        $this->load->model('Ap_invoice_m');
+        $ap_synced = $this->Ap_invoice_m->sync_amount_from_receipt($receipt_id);
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            echo json_encode(['status' => 'error', 'message' => 'Gagal menghapus item, silakan coba lagi.']);
+            return;
+        }
+
         $lines = [
             "🗑️ *HAPUS ITEM PENERIMAAN*",
             "━━━━━━━━━━━━━━",
@@ -1443,9 +1494,6 @@ class Penerimaan extends CI_Controller {
         ];
         $this->_send_wa_notif(implode("\n", $lines), 'hapus item detail_id ' . $detail_id);
 
-        $this->load->model('Ap_invoice_m');
-        $ap_synced = $this->Ap_invoice_m->sync_amount_from_receipt($receipt_id);
-
         echo json_encode(['status' => 'success', 'receipt_deleted' => false, 'ap_synced' => $ap_synced]);
     }
 
@@ -1456,18 +1504,41 @@ class Penerimaan extends CI_Controller {
      * mendistribusi ulang PPN ke harga beli tiap kali dikoreksi berisiko
      * dobel hitung karena tidak semua baris py harga_list sebagai acuan bersih.
      */
-    public function update_receipt_invoice()
+    /**
+     * Diskon Invoice, Ongkir, dan Mode PPN disimpan bareng dalam SATU transaksi —
+     * level 1 saja. Kalau salah satu bagian gagal (mis. sync ap_invoice), semuanya
+     * di-rollback, tidak ada yang tersimpan sebagian. Ongkir lama di-void (bukan
+     * diedit langsung) lalu dibuat entry Beban baru, konsisten dengan pola
+     * void+recreate yang sudah dipakai di tempat lain (Journal, harga_log).
+     */
+    /**
+     * Simpan SEMUA perubahan harga sekaligus — harga per baris (+ harga list/
+     * diskon%/PK manual), Diskon Invoice, Ongkir, dan Mode PPN — level 1 saja.
+     * Semuanya ditahan di browser sampai tombol "Simpan Semua Perubahan Harga"
+     * diklik, baru diproses bareng di sini dalam SATU transaksi supaya
+     * redistribusi PPN dihitung sekali dari seluruh perubahan, bukan
+     * bertahap per baris (lihat diskusi soal staging harga vs qty).
+     */
+    public function update_receipt_prices()
     {
         if ($this->input->method() !== 'post') show_404();
-        if ((int) $this->fungsi->user_login()->level !== 1) {
+
+        $level = (int) $this->fungsi->user_login()->level;
+        if (!in_array($level, [1, 2], true)) {
             echo json_encode(['status' => 'error', 'message' => 'Akses ditolak.']);
             return;
         }
+        $is_level1 = $level === 1;
 
-        $receipt_id     = (int) $this->input->post('receipt_id');
-        $diskon_invoice = (int) str_replace('.', '', $this->input->post('diskon_invoice'));
-        $ppn_mode       = $this->input->post('ppn_mode');
-        if (!in_array($ppn_mode, ['none', 'add_distribute', 'inclusive'], true)) $ppn_mode = 'none';
+        $receipt_id = (int) $this->input->post('receipt_id');
+        $user_id    = (int) $this->session->userdata('userid');
+
+        $detail_ids     = (array) $this->input->post('detail_id');
+        $qty_arr        = (array) $this->input->post('qty_received');
+        $price_arr      = (array) $this->input->post('actual_price');
+        $harga_list_arr = (array) $this->input->post('harga_list');
+        $diskon_arr     = (array) $this->input->post('diskon_persen');
+        $pk_arr         = (array) $this->input->post('pk_new');
 
         $receipt = $this->db->where('receipt_id', $receipt_id)->get('po_receipt')->row();
         if (!$receipt) {
@@ -1475,144 +1546,267 @@ class Penerimaan extends CI_Controller {
             return;
         }
 
-        $subtotal_row = $this->db->query(
-            "SELECT COALESCE(SUM(qty_received * actual_price), 0) AS subtotal FROM po_detail WHERE receipt_id = ?",
-            [$receipt_id]
-        )->row();
-        $subtotal = (float) $subtotal_row->subtotal;
-        $subtotal_setelah_diskon = $subtotal - $diskon_invoice;
+        $po      = $this->db->where('po_id', $receipt->po_id)->get('po_header')->row();
+        $po_info = $this->_po_supplier_info($receipt->po_id);
 
-        if ($ppn_mode === 'add_distribute') {
-            $ppn_nominal  = $this->fungsi->hitung_ppn_tambah($subtotal_setelah_diskon);
-            $ppn_persen   = 11.00;
-            $total_amount = (int) round($subtotal_setelah_diskon + $ppn_nominal);
-        } elseif ($ppn_mode === 'inclusive') {
-            $ppn_nominal  = $this->fungsi->hitung_ppn_ekstrak($subtotal_setelah_diskon);
-            $ppn_persen   = 11.00;
-            $total_amount = (int) round($subtotal_setelah_diskon);
-        } else {
-            $ppn_nominal  = 0;
-            $ppn_persen   = null;
-            $total_amount = (int) round($subtotal_setelah_diskon);
+        $diskon_invoice      = $is_level1 ? (int) str_replace('.', '', $this->input->post('diskon_invoice')) : (int) $receipt->diskon_invoice;
+        $new_ongkir          = $is_level1 ? (int) str_replace('.', '', $this->input->post('ongkir')) : (int) $receipt->ongkir;
+        $ppn_mode            = $is_level1 ? $this->input->post('ppn_mode') : $receipt->ppn_mode;
+        $supplier_invoice_no = $is_level1 ? ($this->input->post('supplier_invoice_no') ?: null) : $receipt->supplier_invoice_no;
+        $invoice_date        = $is_level1 ? ($this->input->post('invoice_date') ?: null) : $receipt->invoice_date;
+        if (!in_array($ppn_mode, ['none', 'add_distribute', 'inclusive'], true)) $ppn_mode = 'none';
+        $ongkir_changed = $is_level1 && $new_ongkir !== (int) $receipt->ongkir;
+
+        // ── Validasi qty SEMUA baris dulu, sebelum menyentuh DB sama sekali —
+        // full staging: kalau ada satu baris saja yang tidak valid, batalkan
+        // seluruh penyimpanan (tidak ada partial save). ──
+        $qty_plan = [];
+        foreach ($detail_ids as $idx => $detail_id) {
+            $detail_id = (int) $detail_id;
+            $detail = $this->db->where('id', $detail_id)->where('receipt_id', $receipt_id)->get('po_detail')->row();
+            if (!$detail) continue;
+
+            $qty_in  = $qty_arr[$idx] ?? null;
+            $new_qty = ($qty_in !== null && $qty_in !== '') ? (int) $qty_in : (int) $detail->qty_received;
+            if ($new_qty < 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Qty tidak boleh negatif.']);
+                return;
+            }
+            // qty_ordered=0 menandai baris "ekstra" (di luar rencana PO) — tidak ada
+            // batas atas order buat baris ini, jadi lewati pengecekan batas.
+            if ((int) $detail->qty_ordered > 0 && $new_qty > (int) $detail->qty_ordered) {
+                $nama = $detail->item_id
+                    ? ($this->db->where('item_id', $detail->item_id)->get('p_item')->row()->nama_item ?? 'item')
+                    : ($detail->item_name_temp ?? 'item');
+                echo json_encode(['status' => 'error', 'message' => 'Qty "' . $nama . '" tidak boleh melebihi qty order (' . $detail->qty_ordered . ').']);
+                return;
+            }
+
+            $qty_plan[$detail_id] = [
+                'detail' => $detail,
+                'old'    => (int) $detail->qty_received,
+                'new'    => $new_qty,
+                'diff'   => $new_qty - (int) $detail->qty_received,
+            ];
         }
 
-        $this->db->where('receipt_id', $receipt_id)->update('po_receipt', [
-            'diskon_invoice' => $diskon_invoice,
-            'ppn_mode'       => $ppn_mode,
-            'ppn_persen'     => $ppn_persen,
-            'ppn_nominal'    => $ppn_nominal,
-            'total_amount'   => $total_amount,
-        ]);
+        $this->db->trans_start();
 
-        $actor   = $this->fungsi->user_login()->nama ?? '-';
-        $po_info = $this->_po_supplier_info($receipt->po_id);
-        $lines = [
-            "✏️ *KOREKSI DISKON/PPN INVOICE*",
-            "━━━━━━━━━━━━━━",
-            "📋 No. PO      : " . ($po_info->po_number ?? '-'),
-            "🏭 Supplier    : " . ($po_info->nama_supplier ?? '-'),
-            "💵 Total Utang : Rp " . number_format($total_amount, 0, ',', '.'),
-            "👤 Diubah      : {$actor}",
-            "🕐 Waktu       : " . date('d/m/Y H:i'),
-            "━━━━━━━━━━━━━━",
-            "_Notifikasi otomatis dari sistem myjdm_",
-        ];
-        $this->_send_wa_notif(implode("\n", $lines), 'koreksi invoice receipt_id ' . $receipt_id);
+        // ── Tahap 0: qty (boleh level 1 & 2) ──
+        $qty_changes  = [];
+        $any_qty_diff = false;
+        foreach ($qty_plan as $detail_id => $p) {
+            if ($p['diff'] === 0) continue;
+            $any_qty_diff = true;
+            $detail = $p['detail'];
+
+            if ($detail->item_id) {
+                $this->db->set('stock', "stock + ({$p['diff']})", false)
+                         ->where('item_id', $detail->item_id)
+                         ->update('p_item');
+
+                $this->db->where('po_detail_id', $detail_id)->delete('t_stock');
+
+                if ($p['new'] > 0 && $po) {
+                    $this->db->insert('t_stock', [
+                        'item_id'      => (int) $detail->item_id,
+                        'type'         => 'in',
+                        'supplier_id'  => (int) $po->supplier_id,
+                        'po_detail_id' => $detail_id,
+                        'qty'          => $p['new'],
+                        'date'         => $receipt->invoice_date ?: date('Y-m-d'),
+                        'detail'       => 'Goods Receipt ' . ($po->po_number ?? ''),
+                        'created_at'   => date('Y-m-d H:i:s'),
+                        'updated_at'   => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
+
+            $this->db->where('id', $detail_id)->update('po_detail', ['qty_received' => $p['new']]);
+
+            $item_nm = $detail->item_id
+                ? ($this->db->where('item_id', $detail->item_id)->get('p_item')->row()->nama_item ?? null)
+                : null;
+            $qty_changes[] = [
+                'nama' => $item_nm ?? $detail->item_name_temp ?? 'Item',
+                'lama' => $p['old'],
+                'baru' => $p['new'],
+            ];
+        }
+
+        if ($any_qty_diff) {
+            $details_now    = $this->db->select('qty_ordered, qty_received')->where('po_id', $receipt->po_id)->get('po_detail')->result();
+            $total_ordered  = array_sum(array_column((array) $details_now, 'qty_ordered'));
+            $total_received = array_sum(array_column((array) $details_now, 'qty_received'));
+            $new_po_status  = $total_received <= 0 ? 'sent' : ($total_received >= $total_ordered ? 'received' : 'partial');
+            $this->db->where('po_id', $receipt->po_id)->update('po_header', ['status' => $new_po_status]);
+        }
+
+        // ── Tahap 1: simpan harga per baris apa adanya (belum kena redistribusi PPN) — level 1 saja ──
+        $manual_pk_by_detail_id = [];
+        $changed_items = [];
+        if ($is_level1) {
+            foreach ($qty_plan as $detail_id => $p) {
+                $detail = $p['detail'];
+                $idx    = array_search((string) $detail_id, array_map('strval', $detail_ids), true);
+                if ($idx === false) continue;
+
+                $new_price     = (int) str_replace('.', '', $price_arr[$idx] ?? '0');
+                $harga_list_in = $harga_list_arr[$idx] ?? '';
+                $diskon_in     = $diskon_arr[$idx] ?? '';
+                $harga_list    = $harga_list_in !== '' ? (float) str_replace('.', '', $harga_list_in) : null;
+                $diskon_persen = $diskon_in !== '' ? (float) $diskon_in : null;
+                $manual_pk     = trim($pk_arr[$idx] ?? '');
+
+                if ($harga_list !== null && $harga_list > 0) {
+                    $new_price = (int) round($harga_list * (1 - ($diskon_persen ?: 0) / 100));
+                }
+                if ($new_price <= 0) continue;
+
+                $this->db->where('id', $detail_id)->update('po_detail', [
+                    'actual_price'  => $new_price,
+                    'harga_list'    => $harga_list,
+                    'diskon_persen' => $diskon_persen,
+                ]);
+
+                if ($manual_pk !== '') $manual_pk_by_detail_id[$detail_id] = $manual_pk;
+
+                if ($detail->item_id && $po && ($new_price !== (int) $detail->actual_price || $manual_pk !== '')) {
+                    $item_before = $this->db->where('item_id', $detail->item_id)->get('p_item')->row();
+                    $this->_update_item_price($detail->item_id, $po->supplier_id, $new_price, 'po_receipt', $receipt->po_id, $harga_list, $manual_pk ?: null);
+                    if ($item_before && $new_price !== (int) $detail->actual_price) {
+                        $changed_items[] = [
+                            'nama' => $item_before->nama_item,
+                            'lama' => (int) $detail->actual_price,
+                            'baru' => $new_price,
+                        ];
+                    }
+                }
+            }
+        }
+
+        // ── Tahap 2: No. Invoice, Tanggal Invoice, Diskon Invoice, Ongkir, Mode PPN — level 1 saja ──
+        if ($is_level1) {
+            $update = [
+                'supplier_invoice_no' => $supplier_invoice_no,
+                'invoice_date'        => $invoice_date,
+                'diskon_invoice'      => $diskon_invoice,
+                'ppn_mode'            => $ppn_mode,
+            ];
+
+            if ($ongkir_changed) {
+                $this->load->model('Beban_m');
+                $this->load->model('Coa_m');
+
+                if ($receipt->ongkir_expense_id) {
+                    $this->Beban_m->void($receipt->ongkir_expense_id, 'Koreksi ongkir dari Detail Penerimaan #' . $receipt_id, $user_id);
+                }
+
+                $new_expense_id = null;
+                $new_journal_id = null;
+                if ($new_ongkir > 0) {
+                    $beban_angkut   = $this->Coa_m->get_by_subtype('beban_angkut_pembelian');
+                    $new_expense_id = $this->Beban_m->create([
+                        'expense_date'   => $receipt->receive_date,
+                        'coa_id'         => $beban_angkut->coa_id,
+                        'amount'         => $new_ongkir,
+                        'payment_method' => 'cash',
+                        'description'    => 'Ongkir penerimaan PO ' . ($po_info->po_number ?? '') . ' (koreksi)',
+                    ], $user_id);
+                    $new_journal_id = $this->Beban_m->get($new_expense_id)->journal_id;
+                }
+
+                $update['ongkir']                = $new_ongkir;
+                $update['ongkir_payment_method'] = $new_ongkir > 0 ? 'cash' : null;
+                $update['ongkir_expense_id']     = $new_expense_id;
+                $update['ongkir_journal_id']     = $new_journal_id;
+            }
+
+            $this->db->where('receipt_id', $receipt_id)->update('po_receipt', $update);
+        }
+
+        // ── Tahap 3: hitung ulang total dari mode PPN yang TERSIMPAN saat ini
+        // (bukan dari nilai yang di-POST — untuk level 2, diskon_invoice/ppn_mode
+        // tidak ikut diubah, jadi harus baca ulang dari DB supaya konsisten) ──
+        $receipt_now          = $this->db->where('receipt_id', $receipt_id)->get('po_receipt')->row();
+        $effective_ppn_mode   = $receipt_now->ppn_mode;
+        $effective_diskon_inv = (int) $receipt_now->diskon_invoice;
+
+        if ($effective_ppn_mode === 'add_distribute') {
+            $this->_redistribute_ppn($receipt_id, $manual_pk_by_detail_id);
+            $receipt_after = $this->db->where('receipt_id', $receipt_id)->get('po_receipt')->row();
+            $ppn_nominal   = (int) $receipt_after->ppn_nominal;
+            $total_amount  = (int) $receipt_after->total_amount;
+            $subtotal      = (float) ($total_amount + $effective_diskon_inv);
+        } else {
+            $subtotal_row = $this->db->query(
+                "SELECT COALESCE(SUM(qty_received * actual_price), 0) AS subtotal FROM po_detail WHERE receipt_id = ?",
+                [$receipt_id]
+            )->row();
+            $subtotal = (float) $subtotal_row->subtotal;
+            $subtotal_setelah_diskon = $subtotal - $effective_diskon_inv;
+
+            if ($effective_ppn_mode === 'inclusive') {
+                $ppn_nominal = $this->fungsi->hitung_ppn_ekstrak($subtotal_setelah_diskon);
+                $ppn_persen  = 11.00;
+            } else {
+                $ppn_nominal = 0;
+                $ppn_persen  = null;
+            }
+            $total_amount = (int) round($subtotal_setelah_diskon);
+
+            $this->db->where('receipt_id', $receipt_id)->update('po_receipt', [
+                'ppn_persen'   => $ppn_persen,
+                'ppn_nominal'  => $ppn_nominal,
+                'total_amount' => $total_amount,
+            ]);
+        }
 
         $this->load->model('Ap_invoice_m');
         $ap_synced = $this->Ap_invoice_m->sync_amount_from_receipt($receipt_id);
 
-        echo json_encode([
-            'status'         => 'success',
-            'diskon_invoice' => $diskon_invoice,
-            'ppn_mode'       => $ppn_mode,
-            'ppn_nominal'    => $ppn_nominal,
-            'total_amount'   => $total_amount,
-            'subtotal'       => (int) round($subtotal),
-            'ap_synced'      => $ap_synced,
-        ]);
-    }
-
-    /**
-     * Edit ongkir resi (Koreksi Data) — level 1 saja. Ongkir lama di-void
-     * (bukan diedit langsung) lalu dibuat entry Beban baru, konsisten dengan
-     * pola void+recreate yang sudah dipakai di tempat lain (Journal, harga_log).
-     */
-    public function update_receipt_ongkir()
-    {
-        if ($this->input->method() !== 'post') show_404();
-        if ((int) $this->fungsi->user_login()->level !== 1) {
-            echo json_encode(['status' => 'error', 'message' => 'Akses ditolak.']);
-            return;
-        }
-
-        $receipt_id = (int) $this->input->post('receipt_id');
-        $new_ongkir = (int) str_replace('.', '', $this->input->post('ongkir'));
-        $user_id    = (int) $this->session->userdata('userid');
-
-        $receipt = $this->db->where('receipt_id', $receipt_id)->get('po_receipt')->row();
-        if (!$receipt) {
-            echo json_encode(['status' => 'error', 'message' => 'Data penerimaan tidak ditemukan.']);
-            return;
-        }
-        if ($new_ongkir === (int) $receipt->ongkir) {
-            echo json_encode(['status' => 'success', 'ongkir' => $new_ongkir, 'unchanged' => true]);
-            return;
-        }
-
-        $this->load->model('Beban_m');
-        $this->load->model('Coa_m');
-        $po_info = $this->_po_supplier_info($receipt->po_id);
-
-        $this->db->trans_start();
-
-        if ($receipt->ongkir_expense_id) {
-            $this->Beban_m->void($receipt->ongkir_expense_id, 'Koreksi ongkir dari Detail Penerimaan #' . $receipt_id, $user_id);
-        }
-
-        $new_expense_id = null;
-        $new_journal_id = null;
-        if ($new_ongkir > 0) {
-            $beban_angkut   = $this->Coa_m->get_by_subtype('beban_angkut_pembelian');
-            $new_expense_id = $this->Beban_m->create([
-                'expense_date'   => $receipt->receive_date,
-                'coa_id'         => $beban_angkut->coa_id,
-                'amount'         => $new_ongkir,
-                'payment_method' => 'cash',
-                'description'    => 'Ongkir penerimaan PO ' . ($po_info->po_number ?? '') . ' (koreksi)',
-            ], $user_id);
-            $new_journal_id = $this->Beban_m->get($new_expense_id)->journal_id;
-        }
-
-        $this->db->where('receipt_id', $receipt_id)->update('po_receipt', [
-            'ongkir'                => $new_ongkir,
-            'ongkir_payment_method' => $new_ongkir > 0 ? 'cash' : null,
-            'ongkir_expense_id'     => $new_expense_id,
-            'ongkir_journal_id'     => $new_journal_id,
-        ]);
-
         $this->db->trans_complete();
 
         if ($this->db->trans_status() === FALSE) {
-            echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan koreksi ongkir.']);
+            echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan perubahan, silakan coba lagi.']);
             return;
         }
 
         $actor = $this->fungsi->user_login()->nama ?? '-';
         $lines = [
-            "✏️ *KOREKSI ONGKIR*",
+            "✏️ *KOREKSI PENERIMAAN*",
             "━━━━━━━━━━━━━━",
-            "📋 No. PO   : " . ($po_info->po_number ?? '-'),
-            "🏭 Supplier : " . ($po_info->nama_supplier ?? '-'),
-            "🚚 Ongkir   : Rp " . number_format((int) $receipt->ongkir, 0, ',', '.') . " → Rp " . number_format($new_ongkir, 0, ',', '.'),
-            "👤 Diubah   : {$actor}",
-            "🕐 Waktu    : " . date('d/m/Y H:i'),
-            "━━━━━━━━━━━━━━",
-            "_Notifikasi otomatis dari sistem myjdm_",
+            "📋 No. PO      : " . ($po_info->po_number ?? '-'),
+            "🏭 Supplier    : " . ($po_info->nama_supplier ?? '-'),
         ];
-        $this->_send_wa_notif(implode("\n", $lines), 'koreksi ongkir receipt_id ' . $receipt_id);
+        foreach ($qty_changes as $qc) {
+            $lines[] = "🔢 {$qc['nama']} : qty {$qc['lama']} → {$qc['baru']}";
+        }
+        foreach ($changed_items as $ci) {
+            $lines[] = "📦 {$ci['nama']} : Rp " . number_format($ci['lama'], 0, ',', '.') . " → Rp " . number_format($ci['baru'], 0, ',', '.');
+        }
+        if ($ongkir_changed) {
+            $lines[] = "🚚 Ongkir      : Rp " . number_format((int) $receipt->ongkir, 0, ',', '.') . " → Rp " . number_format($new_ongkir, 0, ',', '.');
+        }
+        $lines[] = "💵 Total Utang : Rp " . number_format($total_amount, 0, ',', '.');
+        $lines[] = "👤 Diubah      : {$actor}";
+        $lines[] = "🕐 Waktu       : " . date('d/m/Y H:i');
+        $lines[] = "━━━━━━━━━━━━━━";
+        $lines[] = "_Notifikasi otomatis dari sistem myjdm_";
+        if (!empty($qty_changes) || !empty($changed_items) || $ongkir_changed) {
+            $this->_send_wa_notif(implode("\n", $lines), 'koreksi receipt_id ' . $receipt_id);
+        }
 
-        echo json_encode(['status' => 'success', 'ongkir' => $new_ongkir]);
+        echo json_encode([
+            'status'         => 'success',
+            'diskon_invoice' => $effective_diskon_inv,
+            'ppn_mode'       => $effective_ppn_mode,
+            'ppn_nominal'    => $ppn_nominal,
+            'total_amount'   => $total_amount,
+            'subtotal'       => (int) round($subtotal),
+            'ongkir'         => $new_ongkir,
+            'ap_synced'      => $ap_synced,
+        ]);
     }
 
     public function receiving_supplier()
