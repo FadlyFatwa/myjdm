@@ -27,6 +27,9 @@
                     <th>Nama</th>
                     <th>Phone</th>
                     <th>Alamat</th>
+                    <th>Limit Kredit</th>
+                    <th>Tempo (hari)</th>
+                    <th>Diskon Brutto/Netto</th>
                     <th>Saldo Piutang</th>
                     <th>Aksi</th>
                 </tr>
@@ -39,6 +42,9 @@
                 <td><?=$data->nama_customer?></td>
                 <td><?=$data->phone?></td>
                 <td><?=$data->alamat?></td>
+                <td class="text-right">Rp <?=number_format($data->credit_limit,0,',','.')?></td>
+                <td class="text-center"><?=$data->payment_term_days?></td>
+                <td class="text-center"><?=$data->gross_discount_percent !== null ? number_format($data->gross_discount_percent,2,',','.').' %' : '-'?></td>
                 <td class="text-right">Rp <?=number_format($data->ar_balance,0,',','.')?></td>
                 <td class="text-center" width="160px">
                         <a href="<?=site_url('customer/edit/'.$data->customer_id)?>" class="btn btn-primary btn-xs">

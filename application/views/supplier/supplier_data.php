@@ -28,6 +28,8 @@
                     <th>Phone</th>
                     <th>Alamat</th>
                     <th>Keterangan</th>
+                    <th>Tempo (hari)</th>
+                    <th>Saldo Hutang</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
@@ -40,6 +42,8 @@
                 <td><?=$data->phone?></td>
                 <td><?=$data->alamat?></td>
                 <td><?=$data->keterangan?></td>
+                <td class="text-center"><?=$data->payment_term_days?></td>
+                <td class="text-right">Rp <?=number_format($data->ap_balance,0,',','.')?></td>
                 <td class="text-center" width="160px">
                         <a href="<?=site_url('supplier/edit/'.$data->supplier_id)?>" class="btn btn-primary btn-xs">
                             <i class="fa fa-pencil"></i> Edit
