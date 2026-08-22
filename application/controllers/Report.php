@@ -117,6 +117,8 @@ class Report extends CI_Controller {
     }
 
     public function print_pdf() {
+        check_allowed_levels([1, 2]);
+
         // Load model untuk mendapatkan data penjualan
         $this->load->model('sale_m');
 
@@ -146,6 +148,67 @@ class Report extends CI_Controller {
 
         // Output PDF
         $dompdf->stream("cetak_report.pdf", array("Attachment" => 0));
+    }
+
+    // Export PDF Detail: versi per-barang (bukan per-invoice) — nambahin kolom Barcode
+    // dari p_item, dikelompokkan per invoice.
+    public function print_pdf_detail() {
+        check_allowed_levels([1, 2]);
+
+        $this->load->model('sale_m');
+
+        $post = $this->session->userdata('search');
+        $data['post'] = $post;
+        $data['row'] = $this->sale_m->get_filtered_sales($post);
+        $data['detail'] = $this->sale_m->get_filtered_sales_detail($post);
+
+        $total_penjualan = 0;
+        foreach ($data['row']->result() as $sale) {
+            $total_penjualan += $sale->final_price;
+        }
+        $data['total_penjualan'] = $total_penjualan;
+
+        $html = $this->load->view('report/cetak_report_detail', $data, true);
+
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'potrait');
+        $dompdf->render();
+
+        $dompdf->stream("cetak_report_detail.pdf", array("Attachment" => 0));
+    }
+
+    // Export PDF Tagihan: versi ringkas untuk lampiran tagihan ke customer —
+    // tanpa kolom Total/Discount, cuma No Invoice, Keterangan (catatan/data mobil), dan Grand Total.
+    public function print_pdf_tagihan() {
+        check_allowed_levels([1, 2]);
+
+        $this->load->model('sale_m');
+
+        $post = $this->session->userdata('search');
+        $data['post'] = $post;
+        $data['row'] = $this->sale_m->get_filtered_sales($post);
+
+        $total_penjualan = 0;
+        foreach ($data['row']->result() as $sale) {
+            $total_penjualan += $sale->final_price;
+        }
+        $data['total_penjualan'] = $total_penjualan;
+
+        $html = $this->load->view('report/cetak_report_tagihan', $data, true);
+
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'potrait');
+        $dompdf->render();
+
+        $dompdf->stream("cetak_report_tagihan.pdf", array("Attachment" => 0));
     }
 
     public function stock_in() {

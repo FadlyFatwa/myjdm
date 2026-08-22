@@ -42,6 +42,16 @@
                         <label>Invoice</label>
                         <input type="text" name="invoice" value="<?=@$post['invoice']?>" class="form-control" placeholder="Cari invoice...">
                     </div>
+                    <?php if(in_array($this->fungsi->user_login()->level, ['1','2'])) { ?>
+                    <div class="col-md-2">
+                        <label>Status Bayar</label>
+                        <select name="payment_status" class="form-control">
+                            <option value="">- Semua -</option>
+                            <option value="lunas" <?=@$post['payment_status']=='lunas'?'selected':''?>>Lunas</option>
+                            <option value="belum lunas" <?=@$post['payment_status']=='belum lunas'?'selected':''?>>Belum Lunas</option>
+                        </select>
+                    </div>
+                    <?php } ?>
                     <div class="col-md-2" style="margin-top:25px">
                         <button type="submit" name="filter" class="btn btn-primary btn-block">
                             <i class="fa fa-search"></i> Filter
@@ -85,11 +95,19 @@
     <div class="box box-info">
         <div class="box-header with-border">
             <h3 class="box-title"><i class="fa fa-list"></i> Data Penjualan</h3>
+            <?php if(in_array($this->fungsi->user_login()->level, ['1','2'])) { ?>
             <div class="pull-right">
                 <a href="<?= site_url('report/print_pdf') ?>" target="_blank" class="btn btn-danger btn-sm">
                     <i class="fa fa-file-pdf-o"></i> Export PDF
                 </a>
+                <a href="<?= site_url('report/print_pdf_detail') ?>" target="_blank" class="btn btn-info btn-sm">
+                    <i class="fa fa-file-pdf-o"></i> Export PDF Detail
+                </a>
+                <a href="<?= site_url('report/print_pdf_tagihan') ?>" target="_blank" class="btn btn-warning btn-sm">
+                    <i class="fa fa-file-pdf-o"></i> Export PDF Tagihan
+                </a>
             </div>
+            <?php } ?>
         </div>
         <div class="box-body table-responsive">
             <table class="table table-bordered table-striped" id="salesTable">
@@ -168,7 +186,7 @@
                                     <li><a href="<?=site_url('retur/add/'.$data->sale_id)?>"><i class="fa fa-undo"></i> Retur</a></li>
                                     <?php endif; ?>
 
-                                    <?php if(in_array($this->fungsi->user_login()->level, ['1','2'])) { ?>
+                                    <?php if(in_array($this->fungsi->user_login()->level, ['1','2','3'])) { ?>
                                         <li class="divider"></li>
                                         <?php if (empty($data->is_cancelled)): ?>
                                         <li><a href="<?=site_url('sale/edit/'.$data->sale_id)?>"><i class="fa fa-edit"></i> Edit</a></li>

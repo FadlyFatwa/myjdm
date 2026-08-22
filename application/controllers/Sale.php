@@ -615,7 +615,7 @@ class Sale extends CI_Controller {
 
 	// Di controller Sale.php
 	public function edit($sale_id) {
-		check_allowed_levels([1, 2]);
+		check_allowed_levels([1, 2, 3]);
 		$sale = $this->sale_m->get_sale($sale_id)->row();
 		if (!$sale) {
 			$this->session->set_flashdata('error', 'Transaksi tidak ditemukan.');
@@ -651,7 +651,7 @@ class Sale extends CI_Controller {
 	}
 	
 	public function update() {
-		check_allowed_levels([1, 2]);
+		check_allowed_levels([1, 2, 3]);
 		$post = $this->input->post();
 
 		if (empty($post['sale_id'])) {
@@ -788,7 +788,7 @@ class Sale extends CI_Controller {
 
 	public function del($id)
     {
-        check_allowed_levels([1, 2]);
+        check_allowed_levels([1, 2, 3]);
         if ($this->input->method() !== 'post') show_404();
 
         $sale = $this->sale_m->get_sale($id)->row();
@@ -832,7 +832,7 @@ class Sale extends CI_Controller {
 
     public function reactivate($id)
     {
-        check_allowed_levels([1, 2]);
+        check_allowed_levels([1, 2, 3]);
         if ($this->input->method() !== 'post') show_404();
 
         $sale = $this->sale_m->get_sale($id)->row();

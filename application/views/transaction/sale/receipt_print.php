@@ -15,6 +15,7 @@
 
         .container {
             width: 90%;
+            padding-bottom: 170px;
         }
 
         .left-column  { width: 60%; float: left; }
@@ -40,8 +41,20 @@
         .info-table td { border: none; padding: 2px 4px 2px 0; font-size: 12px; vertical-align: top; }
         .info-table .lbl { width: 72px; color: #555; white-space: nowrap; }
 
-        /* ── Footer signature ── */
-        .sig-table { width: 100%; border-collapse: collapse; margin-top: 32px; }
+        .info-left  { width: 58%; float: left; }
+        .info-right { width: 40%; float: right; text-align: right; font-size: 12px; padding-top: 2px; }
+
+        /* ── Footer signature (pinned to bottom of page, static) ── */
+        .sig-footer {
+            position: fixed;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            width: 90%;
+            max-width: 820px;
+            margin: 0 auto;
+        }
+        .sig-table { width: 100%; border-collapse: collapse; }
         .sig-table td { width: 50%; text-align: center; padding: 0; border: none; font-size: 12px; vertical-align: top; }
         .sig-line { margin: 44px auto 4px; width: 120px; border-top: 1px solid #000; }
 
@@ -102,22 +115,25 @@
 
     <hr class="thick">
 
-    <table class="info-table">
-        <tr>
-            <td class="lbl">Tuan/Toko</td>
-            <td>: <strong><?= htmlspecialchars($sale->nama_customer) ?></strong></td>
-        </tr>
-        <tr>
-            <td class="lbl">Kasir</td>
-            <td>: <?= htmlspecialchars($sale->nama) ?></td>
-        </tr>
+    <div class="clearfix">
+        <div class="info-left">
+            <table class="info-table">
+                <tr>
+                    <td class="lbl">Tuan/Toko</td>
+                    <td>: <strong><?= htmlspecialchars($sale->nama_customer) ?></strong></td>
+                </tr>
+                <tr>
+                    <td class="lbl">Kasir</td>
+                    <td>: <?= htmlspecialchars($sale->nama) ?></td>
+                </tr>
+            </table>
+        </div>
         <?php if ($sale->note): ?>
-        <tr>
-            <td class="lbl">Keterangan</td>
-            <td>: <?= htmlspecialchars($sale->note) ?></td>
-        </tr>
+        <div class="info-right">
+            Keterangan : <?= htmlspecialchars($sale->note) ?>
+        </div>
         <?php endif; ?>
-    </table>
+    </div>
 
     <!-- Items table (max 12 per page) -->
     <?php
@@ -166,6 +182,9 @@
                     <?php if (!empty($value->is_jasa)): ?>
                         <span style="font-size:9px;background:#17a2b8;color:#fff;padding:1px 4px;border-radius:3px;">JASA</span>
                     <?php endif; ?>
+                    <?php if (!empty($value->barcode)): ?>
+                        <span style="color:#555;">[<?= htmlspecialchars($value->barcode) ?>]</span>
+                    <?php endif; ?>
                     <?= htmlspecialchars($nama) ?>
                 </td>
                 <td style="text-align:right"><?= number_format(($value->price_sale - $value->discount_item), 0, ',', '.') ?></td>
@@ -196,18 +215,20 @@
     <?php endforeach; ?>
 
     <!-- Footer signature -->
-    <table class="sig-table">
-        <tr>
-            <td>
-                <div>Hormat kami,</div>
-                <div class="sig-line"></div>
-            </td>
-            <td>
-                <div>Tanda Terima,</div>
-                <div class="sig-line"></div>
-            </td>
-        </tr>
-    </table>
+    <div class="sig-footer">
+        <table class="sig-table">
+            <tr>
+                <td>
+                    <div>Hormat kami,</div>
+                    <div class="sig-line"></div>
+                </td>
+                <td>
+                    <div>Tanda Terima,</div>
+                    <div class="sig-line"></div>
+                </td>
+            </tr>
+        </table>
+    </div>
 
 </div>
 </body>

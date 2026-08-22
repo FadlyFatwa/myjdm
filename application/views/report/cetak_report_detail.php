@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Penjualan</title>
+    <title>Laporan Penjualan Detail</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -77,7 +77,7 @@
                 <div class="company-address">Jl.Banceuy Gg.Cikapundung No.18</div>
             </td>
             <td class="col-right">
-                <div class="report-badge">Laporan Penjualan</div>
+                <div class="report-badge">Laporan Penjualan Detail</div>
                 <div class="report-meta">Periode &nbsp;: <?=indo_date(@$post['date1'])?> s/d <?=indo_date(@$post['date2'])?></div>
             </td>
         </tr>
@@ -92,39 +92,66 @@
         $customers[$data->customer_id] = $data->nama_customer;
     }
 
+    // Group item rows (barang + barcode) per invoice, supaya bisa ditampilkan dengan rowspan
+    $grouped = [];
+    foreach ($detail->result() as $d) {
+        if (!isset($grouped[$d->sale_id])) {
+            $grouped[$d->sale_id] = [
+                'invoice'       => $d->invoice,
+                'date'          => $d->date,
+                'customer_id'   => $d->customer_id,
+                'nama_customer' => $d->nama_customer,
+                'items'         => [],
+            ];
+        }
+        $grouped[$d->sale_id]['items'][] = $d;
+    }
+
+    $multi_customer = count($customers) > 1;
+
     // Display data conditionally based on the number of unique customers
-    if (count($customers) > 1) {
+    if ($multi_customer) {
     ?>
 
     <table class="data-table">
         <thead>
             <tr>
                 <th style="width:4%">#</th>
-                <th style="width:15%">Invoice</th>
-                <th style="width:12%">Tanggal</th>
-                <th style="width:27%">Customer</th>
-                <th style="width:14%">Total</th>
-                <th style="width:14%">Discount</th>
-                <th style="width:14%">Grand Total</th>
+                <th style="width:11%">Invoice</th>
+                <th style="width:9%">Tanggal</th>
+                <th style="width:13%">Customer</th>
+                <th style="width:12%">Barcode</th>
+                <th style="width:22%">Nama Barang</th>
+                <th style="width:6%">Qty</th>
+                <th style="width:11%">Harga</th>
+                <th style="width:12%">Sub Total</th>
             </tr>
         </thead>
         <tbody>
             <?php $no = 1;
-            foreach($row->result() as $data) { ?>
+            foreach ($grouped as $g):
+                $item_count = count($g['items']);
+                foreach ($g['items'] as $idx => $item): ?>
             <tr>
-                <td style="text-align:center"><?=$no++?></td>
-                <td><?=$data->invoice?></td>
-                <td><?=indo_date($data->date)?></td>
-                <td><?=$data->customer_id == null ? "Umum" : $data->nama_customer?></td>
-                <td class="text-right"><?=indo_currency($data->total_price)?></td>
-                <td class="text-right"><?=indo_currency($data->discount)?></td>
-                <td class="text-right"><?=indo_currency($data->final_price)?></td>
+                <?php if ($idx === 0): ?>
+                <td rowspan="<?=$item_count?>" style="text-align:center"><?=$no?></td>
+                <td rowspan="<?=$item_count?>"><?=$g['invoice']?></td>
+                <td rowspan="<?=$item_count?>"><?=indo_date($g['date'])?></td>
+                <td rowspan="<?=$item_count?>"><?=$g['customer_id'] == null ? "Umum" : $g['nama_customer']?></td>
+                <?php endif; ?>
+                <td><?=htmlspecialchars((string)$item->barcode)?></td>
+                <td><?=htmlspecialchars((string)$item->nama_item)?></td>
+                <td style="text-align:center"><?=$item->qty?></td>
+                <td class="text-right"><?=indo_currency($item->price_sale)?></td>
+                <td class="text-right"><?=indo_currency($item->total)?></td>
             </tr>
-            <?php } ?>
+                <?php endforeach;
+                $no++;
+            endforeach; ?>
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="6" class="text-right">Total Penjualan :</td>
+                <td colspan="8" class="text-right">Total Penjualan :</td>
                 <td class="text-right">Rp <?= number_format($total_penjualan, 0, ',', '.') ?></td>
             </tr>
         </tfoot>
@@ -137,29 +164,39 @@
         <thead>
             <tr>
                 <th style="width:5%">#</th>
-                <th style="width:32%">Invoice</th>
-                <th style="width:15%">Tanggal</th>
-                <th style="width:16%">Total</th>
-                <th style="width:16%">Discount</th>
-                <th style="width:16%">Grand Total</th>
+                <th style="width:13%">Invoice</th>
+                <th style="width:10%">Tanggal</th>
+                <th style="width:14%">Barcode</th>
+                <th style="width:25%">Nama Barang</th>
+                <th style="width:7%">Qty</th>
+                <th style="width:12%">Harga</th>
+                <th style="width:14%">Sub Total</th>
             </tr>
         </thead>
         <tbody>
             <?php $no = 1;
-            foreach($row->result() as $data) { ?>
+            foreach ($grouped as $g):
+                $item_count = count($g['items']);
+                foreach ($g['items'] as $idx => $item): ?>
             <tr>
-                <td style="text-align:center"><?=$no++?></td>
-                <td><?=$data->invoice?></td>
-                <td><?=indo_date($data->date)?></td>
-                <td class="text-right"><?=indo_currency($data->total_price)?></td>
-                <td class="text-right"><?=indo_currency($data->discount)?></td>
-                <td class="text-right"><?=indo_currency($data->final_price)?></td>
+                <?php if ($idx === 0): ?>
+                <td rowspan="<?=$item_count?>" style="text-align:center"><?=$no?></td>
+                <td rowspan="<?=$item_count?>"><?=$g['invoice']?></td>
+                <td rowspan="<?=$item_count?>"><?=indo_date($g['date'])?></td>
+                <?php endif; ?>
+                <td><?=htmlspecialchars((string)$item->barcode)?></td>
+                <td><?=htmlspecialchars((string)$item->nama_item)?></td>
+                <td style="text-align:center"><?=$item->qty?></td>
+                <td class="text-right"><?=indo_currency($item->price_sale)?></td>
+                <td class="text-right"><?=indo_currency($item->total)?></td>
             </tr>
-            <?php } ?>
+                <?php endforeach;
+                $no++;
+            endforeach; ?>
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="5" class="text-right">Total Penjualan :</td>
+                <td colspan="7" class="text-right">Total Penjualan :</td>
                 <td class="text-right">Rp <?= number_format($total_penjualan, 0, ',', '.') ?></td>
             </tr>
         </tfoot>

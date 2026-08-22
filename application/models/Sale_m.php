@@ -199,6 +199,10 @@ class Sale_m extends CI_Model {
             $this->db->like('t_sale.invoice', $post['invoice']);
         }
 
+        if(!empty($post['payment_status'])){
+            $this->db->where('t_sale.payment_status', $post['payment_status']);
+        }
+
         $this->db->order_by('t_sale.sale_id', 'DESC');
         return $this->db->get();
     }
@@ -407,7 +411,48 @@ class Sale_m extends CI_Model {
         if(!empty($post['invoice'])) {
             $this->db->like("invoice", $post['invoice']);
         }
+        if(!empty($post['payment_status'])) {
+            $this->db->where('t_sale.payment_status', $post['payment_status']);
+        }
         $this->db->order_by('date', 'desc');
+        $query = $this->db->get();
+        return $query;
+    }
+
+    // Baris per-item (barang) untuk laporan penjualan detail, termasuk barcode barang.
+    // Filter sama persis dengan get_filtered_sales supaya hasilnya konsisten.
+    public function get_filtered_sales_detail($post)
+    {
+        $this->db->select('t_sale_detail.detail_id, t_sale_detail.sale_id, t_sale_detail.qty,
+                        t_sale_detail.price_sale, t_sale_detail.discount_item, t_sale_detail.total,
+                        p_item.barcode, p_item.nama_item,
+                        t_sale.invoice, t_sale.date, t_sale.customer_id,
+                        customer.nama_customer');
+        $this->db->from('t_sale_detail');
+        $this->db->join('t_sale', 't_sale_detail.sale_id = t_sale.sale_id');
+        $this->db->join('p_item', 't_sale_detail.item_id = p_item.item_id', 'left');
+        $this->db->join('customer', 't_sale.customer_id = customer.customer_id', 'left');
+        $this->db->where('t_sale.is_cancelled', 0);
+        if(!empty($post['date1']) && !empty($post['date2'])) {
+            $this->db->where('t_sale.date >=', $post['date1']);
+            $this->db->where('t_sale.date <=', $post['date2']);
+        }
+        if(!empty($post['customer'])) {
+            if($post['customer'] == 'null') {
+                $this->db->where("t_sale.customer_id IS NULL");
+            } else {
+                $this->db->where("t_sale.customer_id", $post['customer']);
+            }
+        }
+        if(!empty($post['invoice'])) {
+            $this->db->like("t_sale.invoice", $post['invoice']);
+        }
+        if(!empty($post['payment_status'])) {
+            $this->db->where('t_sale.payment_status', $post['payment_status']);
+        }
+        $this->db->order_by('t_sale.date', 'desc');
+        $this->db->order_by('t_sale.sale_id', 'desc');
+        $this->db->order_by('t_sale_detail.detail_id', 'asc');
         $query = $this->db->get();
         return $query;
     }
